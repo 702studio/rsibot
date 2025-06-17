@@ -20,9 +20,9 @@
         .full-width { grid-column:1 / -1; }
         label { color:var(--label-color);margin-bottom:8px;font-size:13px; }
         select, input { font-family:'Space Mono',monospace;background-color:#333;color:var(--text-color);border:1px solid #555;padding:10px;border-radius:4px;font-size:15px;width:100%;box-sizing:border-box; }
-        select[multiple] { height: 150px; padding: 10px; }
-        select[multiple] option { padding: 5px; }
-        select[multiple] option:checked { background: linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%); color: #121212; }
+        .chip-container { display:flex;flex-wrap:wrap;gap:6px; }
+        .period-chip { padding:6px 12px;border:1px solid #555;border-radius:12px;cursor:pointer;font-size:13px;background-color:#333;color:var(--text-color);user-select:none; }
+        .period-chip.selected { background-color:var(--primary-color);color:#121212; }
         optgroup { font-style:italic;background-color:#252525;color:var(--label-color); }
         #leverage-settings, #smart-leverage-settings { display:none; }
         .action-buttons { display:flex;gap:15px; }
@@ -51,7 +51,10 @@
                 <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
                 <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
                 <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
-                <div class="config-item full-width"><label for="timeframe">Test Periyodu (Çoklu seçim için CTRL/CMD, tek seçim için çift tıkla)</label><select id="timeframe" multiple ondblclick="selectSingle(this)"><optgroup label="Günlük"><option value="1">1 Gün</option><option value="2">2 Gün</option><option value="3">3 Gün</option><option value="4">4 Gün</option><option value="5">5 Gün</option><option value="6">6 Gün</option></optgroup><optgroup label="Haftalık"><option value="7">1 Hafta</option><option value="14">2 Hafta</option><option value="21">3 Hafta</option></optgroup><optgroup label="Aylık"><option value="30" selected>1 Ay</option><option value="60">2 Ay</option><option value="90">3 Ay</option><option value="120">4 Ay</option><option value="150">5 Ay</option><option value="180">6 Ay</option><option value="210">7 Ay</option><option value="240">8 Ay</option><option value="270">9 Ay</option><option value="300">10 Ay</option><option value="330">11 Ay</option><option value="365">1 Yıl</option></optgroup><optgroup label="Yıllık"><option value="730">2 Yıl</option><option value="1095">3 Yıl</option><option value="1825">5 Yıl</option><option value="3650">10 Yıl</option><option value="7300">20 Yıl</option></optgroup></select></div>
+                <div class="config-item full-width">
+                    <label>Test Periyodu (seçmek için dokun veya tıkla, çift tık tek seçim)</label>
+                    <div id="timeframe-chips" class="chip-container"></div>
+                </div>
             </div>
         </div>
         <div class="section">
@@ -80,27 +83,57 @@
     </div>
 
 <script>
+
 (function() {
     let allResultsHtml = "";
     let allResults = [];
+    const defaultSettings = {
+        rsi_smart_leverage: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:'isolated', positionSize:25000 },
+        rsi_leveraged: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:'isolated' }
+    };
+
+    function initPeriodChips() {
+        const periods = [
+            {d:1,l:'1 Gün'},{d:2,l:'2 Gün'},{d:3,l:'3 Gün'},{d:4,l:'4 Gün'},{d:5,l:'5 Gün'},{d:6,l:'6 Gün'},
+            {d:7,l:'1 Hafta'},{d:14,l:'2 Hafta'},{d:21,l:'3 Hafta'},
+            {d:30,l:'1 Ay'},{d:60,l:'2 Ay'},{d:90,l:'3 Ay'},{d:120,l:'4 Ay'},{d:150,l:'5 Ay'},{d:180,l:'6 Ay'},{d:210,l:'7 Ay'},{d:240,l:'8 Ay'},{d:270,l:'9 Ay'},{d:300,l:'10 Ay'},{d:330,l:'11 Ay'},{d:365,l:'1 Yıl'},
+            {d:730,l:'2 Yıl'},{d:1095,l:'3 Yıl'},{d:1825,l:'5 Yıl'},{d:3650,l:'10 Yıl'},{d:7300,l:'20 Yıl'}
+        ];
+        const container = document.getElementById('timeframe-chips');
+        periods.forEach(p=>{
+            const chip = document.createElement('div');
+            chip.className='period-chip';
+            chip.dataset.days=p.d;
+            chip.textContent=p.l;
+            if(p.d===30) chip.classList.add('selected');
+            chip.addEventListener('click',e=>{
+                if(e.detail===2){
+                    document.querySelectorAll('.period-chip').forEach(c=>c.classList.remove('selected'));
+                    chip.classList.add('selected');
+                } else if(e.ctrlKey||e.metaKey){
+                    chip.classList.toggle('selected');
+                } else {
+                    chip.classList.toggle('selected');
+                }
+            });
+            container.appendChild(chip);
+        });
+    }
 
     window.toggleSettings = function() {
         const strategy = document.getElementById('strategy').value;
         document.getElementById('leverage-settings').style.display = (strategy === 'rsi_leveraged') ? 'grid' : 'none';
         document.getElementById('smart-leverage-settings').style.display = (strategy === 'rsi_smart_leverage') ? 'grid' : 'none';
-        if (strategy === 'rsi_smart_leverage') {
-            document.getElementById('fundingRate').parentElement.style.display = 'grid';
-        } else if (strategy.includes('leveraged')) {
-             document.getElementById('fundingRate').parentElement.style.display = 'grid';
-        } else {
-             document.getElementById('fundingRate').parentElement.style.display = 'grid';
+        if (defaultSettings[strategy]) {
+            const d = defaultSettings[strategy];
+            if (d.leverage !== undefined) document.getElementById('leverage').value = d.leverage;
+            if (d.marginPercent !== undefined) document.getElementById('marginPercent').value = d.marginPercent;
+            if (d.hourlyFundingRate !== undefined) document.getElementById('fundingRate').value = d.hourlyFundingRate;
+            if (d.marginType !== undefined) document.getElementById('marginType').value = d.marginType;
+            if (d.positionSize !== undefined) document.getElementById('positionSize').value = d.positionSize;
         }
     };
 
-    window.selectSingle = function(select) {
-        const selectedValue = select.value;
-        for (let i = 0; i < select.options.length; i++) { select.options[i].selected = select.options[i].value === selectedValue; }
-    };
 
     function updateProgress(percentage, message) {
         const container = document.getElementById('progress-container');
@@ -203,7 +236,7 @@
         resultsDiv.innerHTML = '';
         allResults = [];
         try {
-            const selectedPeriods = Array.from(document.getElementById('timeframe').selectedOptions).map(opt => parseInt(opt.value));
+            const selectedPeriods = Array.from(document.querySelectorAll('.period-chip.selected')).map(c => parseInt(c.dataset.days));
             if (selectedPeriods.length === 0) { throw new Error("Lütfen en az bir test periyodu seçin."); }
             for (const daysToTest of selectedPeriods) {
                 const strategyKey = document.getElementById('strategy').value;
@@ -291,7 +324,10 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     };
 
-    window.onload = toggleSettings;
+    window.onload = function(){
+        initPeriodChips();
+        toggleSettings();
+    };
 }());
 </script>
 </body>
