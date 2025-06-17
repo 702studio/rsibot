@@ -1,0 +1,6 @@
+Yeni bir strateji eklemek icin HTML dosyasindaki `strategies` nesnesine yeni bir alan tanimlayabilirsiniz. Anahtar adi strateji kimligidir ve `name`, `type` ve `run` fonksiyonundan olusur. Stratejinin kodunu `run` icine yapistirdiktan sonra <select> listesine ayni kimlikte bir `<option>` ekleyerek hemen test edebilirsiniz. Ilerde stratejileri kaydetmek veya silmek icin JSON tabanli bir dosya ya da `localStorage` kullanimi dusunulebilir.
+
+Arayuzde zaman araligi olarak 1m, 15m ve 30m secenekleri eklendi. Test periyotlari artik "etiket" seklinde gosteriliyor. Her etikete dokunarak birden fazla donem secebilir, isterseniz bir etikete cift tiklayip yalnizca onu aktif hale getirebilirsiniz. CTRL/Cmd tusu da coklu secim icin desteklenir.
+
+Strateji degistirdiginizde ilgili varsayilan ayarlar otomatik olarak alanlara doldurulur. Bu degerleri manuel olarak degistirip kendi presetlerinizi olusturabilirsiniz.
+\n`code - 2025-06-17T034914.508.fixed.html` dosyasi 508 versiyonunun gelistirilmis surumudur ve tum hatalar giderilmis olarak calisir.
