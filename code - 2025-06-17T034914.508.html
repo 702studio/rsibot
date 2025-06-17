@@ -263,7 +263,7 @@
                 if (trade.type === 'LONG') { htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="profit">LONG</span> @ ${trade.price.toFixed(4)} | Poz. Büyüklüğü: ${trade.size.toFixed(2)}$ ${trade.leverage ? `(${trade.leverage}x)` : ''} (${trade.time})</p>`; } 
                 else if (trade.type === 'CLOSE') { const pnlCls = trade.pnl >= 0 ? 'profit' : 'loss'; htmlReport += `<p>&nbsp;&nbsp;<span class="${pnlCls}">CLOSE</span> @ ${trade.price.toFixed(4)} | K/Z: ${trade.pnl.toFixed(2)}$ (%${trade.pnl_percent.toFixed(2)}) (${trade.time})</p>`; } 
                 else if (trade.type === 'LIQUIDATION') { htmlReport += `<p>&nbsp;&nbsp;<span class="loss">LİKİDASYON</span> @ ${trade.price.toFixed(4)} | Kayıp: ${Math.abs(trade.pnl).toFixed(2)}$ (${trade.time})</p>`; } 
-                else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlLog += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
+                else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
             });
             htmlReport += `</div></div>`;
             allResultsHtml += htmlReport;
