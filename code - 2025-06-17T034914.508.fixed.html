@@ -17,6 +17,8 @@
         .section { background-color:var(--surface-color);padding:20px;border-radius:8px;border:1px solid var(--border-color); margin-bottom:25px; }
         .config-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px; }
         .config-item { display:flex;flex-direction:column; }
+        .config-item label { display:flex;align-items:center;gap:6px; }
+        .config-item input[type=checkbox] { width:auto; }
         .full-width { grid-column:1 / -1; }
         label { color:var(--label-color);margin-bottom:8px;font-size:13px; }
         select, input { font-family:'Funnel Sans',sans-serif;background-color:#333;color:var(--text-color);border:1px solid #555;padding:10px;border-radius:4px;font-size:15px;width:100%;box-sizing:border-box; }
@@ -62,6 +64,7 @@
             <div class="config-grid">
                 <div class="config-item"><label for="commission">İşlem Komisyonu (%)</label><input type="number" id="commission" value="0.04" step="0.01"></div>
                 <div class="config-item"><label for="fundingRate">Saatlik Fonlama (%)</label><input type="number" id="fundingRate" value="0.00125" step="0.0001"></div>
+                <div class="config-item full-width"><label><input type="checkbox" id="compoundProfits" checked> Kârı İşleme Ekle</label></div>
                 <div id="leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
                     <div class="config-item"><label for="marginType">Margin Tipi</label>
                         <select id="marginType">
@@ -71,11 +74,9 @@
                     </div>
                     <div class="config-item"><label for="leverage">Kaldıraç (x)</label><input type="number" id="leverage" value="5"></div>
                     <div class="config-item"><label for="marginPercent">Margin Oranı (%)</label><input type="number" id="marginPercent" value="10"></div>
-                    <div class="config-item"><label><input type="checkbox" id="compoundProfits" checked> Kârı İşleme Ekle</label></div>
                 </div>
                  <div id="smart-leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
                     <div class="config-item"><label for="positionSize">İşlem Büyüklüğü (USD)</label><input type="number" id="positionSize" value="25000"></div>
-                    <div class="config-item"><label><input type="checkbox" id="compoundProfitsSmart" checked> Kârı İşleme Ekle</label></div>
                 </div>
             </div>
         </div>
@@ -223,9 +224,131 @@
     };
 
     const strategies = {
-        rsi_plus_spot: { name: "RSI+ (Trend Filtreli)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const trendEma = calculateEMA(prices, 200); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 200; i < klines.length; i++) { if (prices[i] > trendEma[i] && rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (rsi[i-1] < 70 && rsi[i] >= 70 && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
-        rsi_reversal: { name: "RSI Geri Dönüşü (Spot)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 14; i < klines.length; i++) { if (rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (rsi[i-1] < 70 && rsi[i] >= 70 && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
-        ma_crossover: { name: "MA Kesişimi (Spot Trend)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const smaShort = calculateSMA(prices, 20); const smaLong = calculateSMA(prices, 50); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 50; i < klines.length; i++) { if (smaShort[i-1] < smaLong[i-1] && smaShort[i] > smaLong[i] && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
+        rsi_plus_spot: { name: "RSI+ (Trend Filtreli)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
+            const prices = klines.map(k => parseFloat(k[4]));
+            const rsi = calculateRSI(prices, 14);
+            const trendEma = calculateEMA(prices, 200);
+            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
+            for (let i = 200; i < klines.length; i++) {
+                if (prices[i] > trendEma[i] && rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) {
+                    const tradeBal = compound ? balance : initialBalance;
+                    const fee = tradeBal * (commissionRate / 100);
+                    totalFees += fee;
+                    cryptoAmount = (tradeBal - fee) / prices[i];
+                    if (compound) balance -= tradeBal;
+                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[i];
+                    const fee = sellValue * (commissionRate / 100);
+                    totalFees += fee;
+                    const result = sellValue - fee;
+                    if (compound) {
+                        balance += result;
+                    } else {
+                        totalProfit += result - initialBalance;
+                    }
+                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    cryptoAmount = 0;
+                    if (!compound) balance = initialBalance;
+                }
+            }
+            if (cryptoAmount > 0) {
+                const sellValue = cryptoAmount * prices[prices.length - 1];
+                const fee = sellValue * (commissionRate / 100);
+                totalFees += fee;
+                const result = sellValue - fee;
+                if (compound) {
+                    balance += result;
+                } else {
+                    totalProfit += result - initialBalance;
+                }
+            }
+            const finalBalance = compound ? balance : initialBalance + totalProfit;
+            return { finalBalance, trades, totalFees, liquidationCount: 0 };
+        }},
+        rsi_reversal: { name: "RSI Geri Dönüşü (Spot)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
+            const prices = klines.map(k => parseFloat(k[4]));
+            const rsi = calculateRSI(prices, 14);
+            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
+            for (let i = 14; i < klines.length; i++) {
+                if (rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) {
+                    const tradeBal = compound ? balance : initialBalance;
+                    const fee = tradeBal * (commissionRate / 100);
+                    totalFees += fee;
+                    cryptoAmount = (tradeBal - fee) / prices[i];
+                    if (compound) balance -= tradeBal;
+                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[i];
+                    const fee = sellValue * (commissionRate / 100);
+                    totalFees += fee;
+                    const result = sellValue - fee;
+                    if (compound) {
+                        balance += result;
+                    } else {
+                        totalProfit += result - initialBalance;
+                    }
+                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    cryptoAmount = 0;
+                    if (!compound) balance = initialBalance;
+                }
+            }
+            if (cryptoAmount > 0) {
+                const sellValue = cryptoAmount * prices[prices.length - 1];
+                const fee = sellValue * (commissionRate / 100);
+                totalFees += fee;
+                const result = sellValue - fee;
+                if (compound) {
+                    balance += result;
+                } else {
+                    totalProfit += result - initialBalance;
+                }
+            }
+            const finalBalance = compound ? balance : initialBalance + totalProfit;
+            return { finalBalance, trades, totalFees, liquidationCount: 0 };
+        }},
+        ma_crossover: { name: "MA Kesişimi (Spot Trend)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
+            const prices = klines.map(k => parseFloat(k[4]));
+            const smaShort = calculateSMA(prices, 20);
+            const smaLong = calculateSMA(prices, 50);
+            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
+            for (let i = 50; i < klines.length; i++) {
+                if (smaShort[i-1] < smaLong[i-1] && smaShort[i] > smaLong[i] && cryptoAmount === 0) {
+                    const tradeBal = compound ? balance : initialBalance;
+                    const fee = tradeBal * (commissionRate / 100);
+                    totalFees += fee;
+                    cryptoAmount = (tradeBal - fee) / prices[i];
+                    if (compound) balance -= tradeBal;
+                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[i];
+                    const fee = sellValue * (commissionRate / 100);
+                    totalFees += fee;
+                    const result = sellValue - fee;
+                    if (compound) {
+                        balance += result;
+                    } else {
+                        totalProfit += result - initialBalance;
+                    }
+                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    cryptoAmount = 0;
+                    if (!compound) balance = initialBalance;
+                }
+            }
+            if (cryptoAmount > 0) {
+                const sellValue = cryptoAmount * prices[prices.length - 1];
+                const fee = sellValue * (commissionRate / 100);
+                totalFees += fee;
+                const result = sellValue - fee;
+                if (compound) {
+                    balance += result;
+                } else {
+                    totalProfit += result - initialBalance;
+                }
+            }
+            const finalBalance = compound ? balance : initialBalance + totalProfit;
+            return { finalBalance, trades, totalFees, liquidationCount: 0 };
+        }},
         rsi_smart_leverage: { name: "Akıllı Kaldıraç RSI", type: 'leveraged', run: function(klines, initialBalance, settings) { const { positionSize, commissionRate, hourlyFundingRate, compound } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = positionSize, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { const pnl = -marginUsed; totalBalance += pnl; liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { const baseBal = compound ? totalBalance : initialBalance; marginUsed = baseBal; positionSizeUsd = compound ? positionSize * (baseBal / initialBalance) : positionSize; const leverage = positionSizeUsd / marginUsed; if (baseBal <= 0 || leverage < 1) continue; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, leverage: leverage.toFixed(2), time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }},
         rsi_leveraged: { name: "RSI Kaldıraçlı (Standart)", type: 'leveraged', run: function(klines, initialBalance, settings) { const { leverage, marginPercent, commissionRate, hourlyFundingRate, marginType, compound } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = 0, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { let pnl = -marginUsed; if (marginType === 'cross') { pnl = -totalBalance; totalBalance = 0; } else { totalBalance += pnl; } liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; if (marginType === 'cross') break; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { const baseBal = compound ? totalBalance : initialBalance; marginUsed = baseBal * (marginPercent / 100); if (baseBal <= 0 || baseBal < marginUsed) continue; positionSizeUsd = marginUsed * leverage; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }}
     };
@@ -250,12 +373,12 @@
                 const klines = await fetchKlines(pair, interval, daysToTest);
                 updateProgress(50, `Strateji yürütülüyor: ${daysToTest} günlük periyot...`);
                 let result;
+                const compound = document.getElementById('compoundProfits').checked;
                 if (selectedStrategy.type.includes('leveraged')) {
-                    const compound = document.getElementById(selectedStrategy.name.includes('Akıllı') ? 'compoundProfitsSmart' : 'compoundProfits').checked;
                     const settings = { leverage: parseFloat(document.getElementById('leverage').value), marginPercent: parseFloat(document.getElementById('marginPercent').value), hourlyFundingRate: parseFloat(document.getElementById('fundingRate').value), marginType: document.getElementById('marginType').value, commissionRate, positionSize: parseFloat(document.getElementById('positionSize').value), compound };
                     result = selectedStrategy.run(klines, initialBalance, settings);
                 } else {
-                    result = selectedStrategy.run(klines, initialBalance, commissionRate);
+                    result = selectedStrategy.run(klines, initialBalance, commissionRate, compound);
                 }
                 const params = { strategy: strategyKey, pair, interval, days: daysToTest, commission: commissionRate, leverage: selectedStrategy.type.includes('leveraged') ? document.getElementById('leverage').value : null, marginPercent: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginPercent').value : null, fundingRate: selectedStrategy.type.includes('leveraged') ? document.getElementById('fundingRate').value : null, marginType: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginType').value : null, positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null };
                 allResults.push({ ...result, initialBalance, params });
