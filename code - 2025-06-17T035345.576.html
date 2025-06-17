@@ -42,7 +42,7 @@
                 <div class="config-item full-width"><label for="strategy">Strateji Seçin</label><select id="strategy" onchange="toggleLeverageSettings()"><optgroup label="--- Kaldıraçlı Stratejiler ---"><option value="rsi_leveraged">RSI Kaldıraçlı (Momentum)</option></optgroup><optgroup label="--- Standart Spot Stratejileri ---"><option value="rsi_reversal" selected>RSI Geri Dönüşü (Spot)</option><option value="ma_crossover">MA Kesişimi (Spot Trend)</option><option value="bollinger_bands">Bollinger Bandı (Spot Volatilite)</option><option value="ichimoku_tenkan_spot">Ichimoku Tenkan Kesişimi</option><option value="ichimoku_tk_cross_spot">Ichimoku TK Kesişimi</option></optgroup></select></div>
                 <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
                 <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
-                <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
+                <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
                 <div class="config-item"><label for="timeframe">Test Periyodu</label><select id="timeframe"><option value="1">1 Gün</option><option value="7">1 Hafta</option><option value="14">2 Hafta</option><option value="21">3 Hafta</option><option value="30">1 Ay</option><option value="60">2 Ay</option><option value="90">3 Ay</option><option value="120">4 Ay</option><option value="150">5 Ay</option><option value="180">6 Ay</option><option value="210">7 Ay</option><option value="240">8 Ay</option><option value="270">9 Ay</option><option value="300">10 Ay</option><option value="330">11 Ay</option><option value="365" selected>1 Yıl</option><option value="730">2 Yıl</option><option value="1095">3 Yıl</option><option value="1460">4 Yıl</option><option value="1825">5 Yıl</option><option value="3650">10 Yıl</option><option value="7300">20 Yıl</option></select></div>
             </div>
         </div>
@@ -80,7 +80,7 @@
         }
 
         async function fetchKlines(symbol, interval, days) {
-            const intervalMap = {'1h':60, '4h':240, '1d':1440};
+            const intervalMap = {'1m':1, '15m':15, '30m':30, '1h':60, '4h':240, '1d':1440};
             const candlesPerDay = 1440 / (intervalMap[interval] || 240);
             const candlesPerCall = 1000;
             const totalCandles = Math.ceil(days * candlesPerDay);

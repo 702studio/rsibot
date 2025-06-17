@@ -49,7 +49,7 @@
                 <div class="config-item full-width"><label for="strategy">Strateji Seçin</label><select id="strategy" onchange="toggleSettings()"><optgroup label="--- Akıllı Kaldıraç ---"><option value="rsi_smart_leverage" selected>Akıllı Kaldıraç RSI</option></optgroup><optgroup label="--- Standart Kaldıraç ---"><option value="rsi_leveraged">RSI Kaldıraçlı (Standart)</option></optgroup><optgroup label="--- Spot Stratejileri ---"><option value="rsi_plus_spot">RSI+ (Trend Filtreli)</option><option value="rsi_reversal">RSI Geri Dönüşü (Standart)</option><option value="ma_crossover">MA Kesişimi (Trend Takip)</option></optgroup></select></div>
                 <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
                 <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
-                <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
+                <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
                 <div class="config-item full-width"><label for="timeframe">Test Periyodu (Çoklu seçim için CTRL/CMD, tek seçim için çift tıkla)</label><select id="timeframe" multiple ondblclick="selectSingle(this)"><optgroup label="Günlük"><option value="1">1 Gün</option><option value="2">2 Gün</option><option value="3">3 Gün</option><option value="4">4 Gün</option><option value="5">5 Gün</option><option value="6">6 Gün</option></optgroup><optgroup label="Haftalık"><option value="7">1 Hafta</option><option value="14">2 Hafta</option><option value="21">3 Hafta</option></optgroup><optgroup label="Aylık"><option value="30" selected>1 Ay</option><option value="60">2 Ay</option><option value="90">3 Ay</option><option value="120">4 Ay</option><option value="150">5 Ay</option><option value="180">6 Ay</option><option value="210">7 Ay</option><option value="240">8 Ay</option><option value="270">9 Ay</option><option value="300">10 Ay</option><option value="330">11 Ay</option><option value="365">1 Yıl</option></optgroup><optgroup label="Yıllık"><option value="730">2 Yıl</option><option value="1095">3 Yıl</option><option value="1825">5 Yıl</option><option value="3650">10 Yıl</option><option value="7300">20 Yıl</option></optgroup></select></div>
             </div>
         </div>
@@ -59,6 +59,12 @@
                 <div class="config-item"><label for="commission">İşlem Komisyonu (%)</label><input type="number" id="commission" value="0.04" step="0.01"></div>
                 <div class="config-item"><label for="fundingRate">Saatlik Fonlama (%)</label><input type="number" id="fundingRate" value="0.00125" step="0.0001"></div>
                 <div id="leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
+                    <div class="config-item"><label for="marginType">Margin Tipi</label>
+                        <select id="marginType">
+                            <option value="isolated" selected>İzole Margin (Güvenli)</option>
+                            <option value="cross">Çapraz Margin (Tüm Kasa)</option>
+                        </select>
+                    </div>
                     <div class="config-item"><label for="leverage">Kaldıraç (x)</label><input type="number" id="leverage" value="5"></div>
                     <div class="config-item"><label for="marginPercent">Margin Oranı (%)</label><input type="number" id="marginPercent" value="10"></div>
                 </div>
@@ -75,6 +81,7 @@
 <script>
 (function() {
     let allResultsHtml = "";
+    let allResults = [];
 
     window.toggleSettings = function() {
         const strategy = document.getElementById('strategy').value;
@@ -94,11 +101,90 @@
         for (let i = 0; i < select.options.length; i++) { select.options[i].selected = select.options[i].value === selectedValue; }
     };
 
-    function updateProgress(percentage, message) { /* Unchanged but correct */ }
-    async function fetchKlines(symbol, interval, days) { /* Unchanged but correct */ }
-    const calculateSMA = (data, period) => { /* Unchanged but correct */ };
-    const calculateEMA = (data, period) => { /* Unchanged but correct */ };
-    const calculateRSI = (prices, period = 14) => { /* Unchanged but correct */ };
+    function updateProgress(percentage, message) {
+        const container = document.getElementById('progress-container');
+        container.style.display = 'block';
+        container.innerHTML = `<div id="progress-bar-bg" style="width:100%;background-color:#444;border-radius:4px;overflow:hidden;"><div id="progress-bar" style="width:${percentage}%;height:10px;background-color:var(--primary-color);transition:width .3s ease-in-out;border-radius:4px;"></div></div><pre id="progress-log" style="font-size:13px;color:var(--label-color);margin-top:10px;white-space:pre;">${message}</pre>`;
+    }
+
+    async function fetchKlines(symbol, interval, days) {
+        const intervalMap = {'1m':1, '15m':15, '30m':30, '1h':60, '4h':240, '1d':1440};
+        const candlesPerDay = 1440 / (intervalMap[interval] || 240);
+        const candlesPerCall = 1000;
+        const totalCandles = Math.ceil(days * candlesPerDay);
+        const numCalls = Math.ceil(totalCandles / candlesPerCall);
+        let allKlines = [];
+        let endTime = Date.now();
+        for (let i = 0; i < numCalls; i++) {
+            const progress = 10 + (i / numCalls) * 40;
+            updateProgress(progress, `Veri çekiliyor: ${symbol}... Paket ${i + 1} / ${numCalls}`);
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&endTime=${endTime}&limit=${candlesPerCall}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`API Hatası: ${response.status}`);
+            const klines = await response.json();
+            if (klines && klines.length > 0) {
+                allKlines = klines.concat(allKlines);
+                endTime = klines[0][0] - 1;
+            } else { break; }
+        }
+        return allKlines.filter((v, i, a) => a.findIndex(t => (t[0] === v[0])) === i).sort((a,b) => a[0] - b[0]).slice(-totalCandles);
+    }
+
+    const calculateSMA = (data, period) => {
+        if (data.length < period) return new Array(data.length).fill(null);
+        let sma = new Array(data.length).fill(null);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            sum += data[i];
+            if (i >= period) {
+                sum -= data[i - period];
+                sma[i] = sum / period;
+            } else if (i === period - 1) {
+                sma[i] = sum / period;
+            }
+        }
+        return sma;
+    };
+
+    const calculateEMA = (data, period) => {
+        if (data.length < period) return new Array(data.length).fill(null);
+        let ema = new Array(data.length).fill(null);
+        const multiplier = 2 / (period + 1);
+        let sum = 0;
+        for (let i = 0; i < period; i++) sum += data[i];
+        ema[period - 1] = sum / period;
+        for (let i = period; i < data.length; i++) {
+            ema[i] = ((data[i] - ema[i - 1]) * multiplier) + ema[i - 1];
+        }
+        return ema;
+    };
+
+    const calculateRSI = (prices, period = 14) => {
+        let rsi = new Array(prices.length).fill(null);
+        let gains = 0, losses = 0;
+        for (let i = 1; i <= period; i++) {
+            if(prices[i] === undefined || prices[i-1] === undefined) continue;
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) { gains += diff; } else { losses -= diff; }
+        }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        for (let i = period + 1; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) {
+                avgGain = (avgGain * (period - 1) + diff) / period;
+                avgLoss = (avgLoss * (period - 1)) / period;
+            } else {
+                avgLoss = (avgLoss * (period - 1) - diff) / period;
+                avgGain = (avgGain * (period - 1)) / period;
+            }
+            if (avgLoss === 0) rsi[i] = 100; else {
+                const rs = avgGain / avgLoss;
+                rsi[i] = 100 - (100 / (1 + rs));
+            }
+        }
+        return rsi;
+    };
 
     const strategies = {
         rsi_plus_spot: { name: "RSI+ (Trend Filtreli)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const trendEma = calculateEMA(prices, 200); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 200; i < klines.length; i++) { if (prices[i] > trendEma[i] && rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (rsi[i-1] < 70 && rsi[i] >= 70 && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
@@ -183,7 +269,7 @@
                 if (trade.type === 'LONG') { htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="profit">LONG</span> @ ${trade.price.toFixed(4)} | Poz. Büyüklüğü: ${trade.size.toFixed(2)}$ ${trade.leverage ? `(${trade.leverage}x)` : ''} (${trade.time})</p>`; } 
                 else if (trade.type === 'CLOSE') { const pnlCls = trade.pnl >= 0 ? 'profit' : 'loss'; htmlReport += `<p>&nbsp;&nbsp;<span class="${pnlCls}">CLOSE</span> @ ${trade.price.toFixed(4)} | K/Z: ${trade.pnl.toFixed(2)}$ (%${trade.pnl_percent.toFixed(2)}) (${trade.time})</p>`; } 
                 else if (trade.type === 'LIQUIDATION') { htmlReport += `<p>&nbsp;&nbsp;<span class="loss">LİKİDASYON</span> @ ${trade.price.toFixed(4)} | Kayıp: ${Math.abs(trade.pnl).toFixed(2)}$ (${trade.time})</p>`; } 
-                else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlLog += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
+                else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
             });
             htmlReport += `</div></div>`;
             allResultsHtml += htmlReport;
