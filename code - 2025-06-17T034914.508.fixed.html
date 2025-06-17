@@ -1,0 +1,298 @@
+<!-- Improved copy of 508 with fixes and enhancements -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nihai Backtest Platformu (Definitive Edition)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color:#121212;--surface-color:#1e1e1e;--primary-color:#ffc107;--primary-hover:#e0a800;--text-color:#e0e0e0;--label-color:#aaa;--border-color:#333;--profit-color:#00ff9d;--loss-color:#ff4d6a; }
+        body { font-family:'Space Mono',monospace;background-color:var(--bg-color);color:var(--text-color);padding:15px;line-height:1.7;font-size:15px;margin:0; }
+        .container { max-width:900px;margin:0 auto; }
+        h1, h2 { color:var(--primary-color);border-bottom:1px solid var(--border-color);padding-bottom:10px;font-size:1.5em; }
+        h2 { font-size:1.1em;color:var(--label-color);margin-top:25px;margin-bottom:15px;border:none;padding:0;}
+        .section { background-color:var(--surface-color);padding:20px;border-radius:8px;border:1px solid var(--border-color); margin-bottom:25px; }
+        .config-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px; }
+        .config-item { display:flex;flex-direction:column; }
+        .full-width { grid-column:1 / -1; }
+        label { color:var(--label-color);margin-bottom:8px;font-size:13px; }
+        select, input { font-family:'Space Mono',monospace;background-color:#333;color:var(--text-color);border:1px solid #555;padding:10px;border-radius:4px;font-size:15px;width:100%;box-sizing:border-box; }
+        select[multiple] { height: 150px; padding: 10px; }
+        select[multiple] option { padding: 5px; }
+        select[multiple] option:checked { background: linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%); color: #121212; }
+        optgroup { font-style:italic;background-color:#252525;color:var(--label-color); }
+        #leverage-settings, #smart-leverage-settings { display:none; }
+        .action-buttons { display:flex;gap:15px; }
+        button { flex-grow:1;padding:12px 20px;cursor:pointer;border:none;font-weight:700;font-size:16px;border-radius:4px;transition:background-color .3s; }
+        button#runBtn { background-color:var(--primary-color);color:#121212; }
+        button#downloadBtn { background-color:#28a745;color:#fff; }
+        button:disabled { background-color:#555;cursor:not-allowed;color:#999; }
+        #progress-container { display:none;margin-top:25px;background-color:var(--surface-color);padding:15px;border-radius:8px; }
+        #progress-bar { width:0%;height:10px;background-color:var(--primary-color);transition:width .3s ease-in-out;border-radius:4px;}
+        #progress-log { font-size:13px;color:var(--label-color);margin-top:10px;white-space:pre; }
+        #results { display:none;margin-top:25px; }
+        .report-section { background-color:var(--surface-color); padding:20px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px; }
+        .report-section h3 { margin-top:0; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:10px; }
+        .report-dl { display:grid;grid-template-columns:max-content auto;gap:10px 20px; } .report-dl dt { grid-column-start:1;font-weight:700;color:var(--label-color); } .report-dl dd { grid-column-start:2; }
+        .report-dl strong { font-size:1.2em; } .log-container { font-size:12px; max-height:300px; overflow-y:auto; } .log-container p { margin:4px 0; }
+        .profit { color:var(--profit-color); } .loss { color:var(--loss-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nihai Backtest Platformu</h1>
+        <div class="section">
+            <h2>Genel Ayarlar</h2>
+            <div class="config-grid">
+                <div class="config-item full-width"><label for="strategy">Strateji Seçin</label><select id="strategy" onchange="toggleSettings()"><optgroup label="--- Akıllı Kaldıraç ---"><option value="rsi_smart_leverage" selected>Akıllı Kaldıraç RSI</option></optgroup><optgroup label="--- Standart Kaldıraç ---"><option value="rsi_leveraged">RSI Kaldıraçlı (Standart)</option></optgroup><optgroup label="--- Spot Stratejileri ---"><option value="rsi_plus_spot">RSI+ (Trend Filtreli)</option><option value="rsi_reversal">RSI Geri Dönüşü (Standart)</option><option value="ma_crossover">MA Kesişimi (Trend Takip)</option></optgroup></select></div>
+                <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
+                <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
+                <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
+                <div class="config-item full-width"><label for="timeframe">Test Periyodu (Çoklu seçim için CTRL/CMD, tek seçim için çift tıkla)</label><select id="timeframe" multiple ondblclick="selectSingle(this)"><optgroup label="Günlük"><option value="1">1 Gün</option><option value="2">2 Gün</option><option value="3">3 Gün</option><option value="4">4 Gün</option><option value="5">5 Gün</option><option value="6">6 Gün</option></optgroup><optgroup label="Haftalık"><option value="7">1 Hafta</option><option value="14">2 Hafta</option><option value="21">3 Hafta</option></optgroup><optgroup label="Aylık"><option value="30" selected>1 Ay</option><option value="60">2 Ay</option><option value="90">3 Ay</option><option value="120">4 Ay</option><option value="150">5 Ay</option><option value="180">6 Ay</option><option value="210">7 Ay</option><option value="240">8 Ay</option><option value="270">9 Ay</option><option value="300">10 Ay</option><option value="330">11 Ay</option><option value="365">1 Yıl</option></optgroup><optgroup label="Yıllık"><option value="730">2 Yıl</option><option value="1095">3 Yıl</option><option value="1825">5 Yıl</option><option value="3650">10 Yıl</option><option value="7300">20 Yıl</option></optgroup></select></div>
+            </div>
+        </div>
+        <div class="section">
+            <h2>Maliyet & Kaldıraç Ayarları</h2>
+            <div class="config-grid">
+                <div class="config-item"><label for="commission">İşlem Komisyonu (%)</label><input type="number" id="commission" value="0.04" step="0.01"></div>
+                <div class="config-item"><label for="fundingRate">Saatlik Fonlama (%)</label><input type="number" id="fundingRate" value="0.00125" step="0.0001"></div>
+                <div id="leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
+                    <div class="config-item"><label for="marginType">Margin Tipi</label>
+                        <select id="marginType">
+                            <option value="isolated" selected>İzole Margin (Güvenli)</option>
+                            <option value="cross">Çapraz Margin (Tüm Kasa)</option>
+                        </select>
+                    </div>
+                    <div class="config-item"><label for="leverage">Kaldıraç (x)</label><input type="number" id="leverage" value="5"></div>
+                    <div class="config-item"><label for="marginPercent">Margin Oranı (%)</label><input type="number" id="marginPercent" value="10"></div>
+                </div>
+                 <div id="smart-leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
+                    <div class="config-item"><label for="positionSize">İşlem Büyüklüğü (USD)</label><input type="number" id="positionSize" value="25000"></div>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons"><button id="runBtn" onclick="runBacktest()">Backtest'i Başlat</button><button id="downloadBtn" onclick="generateAndDownloadHtmlReport()" style="display:none;">Raporu İndir</button></div>
+        <div id="progress-container"></div>
+        <div id="results"></div>
+    </div>
+
+<script>
+(function() {
+    let allResultsHtml = "";
+    let allResults = [];
+
+    window.toggleSettings = function() {
+        const strategy = document.getElementById('strategy').value;
+        document.getElementById('leverage-settings').style.display = (strategy === 'rsi_leveraged') ? 'grid' : 'none';
+        document.getElementById('smart-leverage-settings').style.display = (strategy === 'rsi_smart_leverage') ? 'grid' : 'none';
+        if (strategy === 'rsi_smart_leverage') {
+            document.getElementById('fundingRate').parentElement.style.display = 'grid';
+        } else if (strategy.includes('leveraged')) {
+             document.getElementById('fundingRate').parentElement.style.display = 'grid';
+        } else {
+             document.getElementById('fundingRate').parentElement.style.display = 'grid';
+        }
+    };
+
+    window.selectSingle = function(select) {
+        const selectedValue = select.value;
+        for (let i = 0; i < select.options.length; i++) { select.options[i].selected = select.options[i].value === selectedValue; }
+    };
+
+    function updateProgress(percentage, message) {
+        const container = document.getElementById('progress-container');
+        container.style.display = 'block';
+        container.innerHTML = `<div id="progress-bar-bg" style="width:100%;background-color:#444;border-radius:4px;overflow:hidden;"><div id="progress-bar" style="width:${percentage}%;height:10px;background-color:var(--primary-color);transition:width .3s ease-in-out;border-radius:4px;"></div></div><pre id="progress-log" style="font-size:13px;color:var(--label-color);margin-top:10px;white-space:pre;">${message}</pre>`;
+    }
+
+    async function fetchKlines(symbol, interval, days) {
+        const intervalMap = {'1m':1, '15m':15, '30m':30, '1h':60, '4h':240, '1d':1440};
+        const candlesPerDay = 1440 / (intervalMap[interval] || 240);
+        const candlesPerCall = 1000;
+        const totalCandles = Math.ceil(days * candlesPerDay);
+        const numCalls = Math.ceil(totalCandles / candlesPerCall);
+        let allKlines = [];
+        let endTime = Date.now();
+        for (let i = 0; i < numCalls; i++) {
+            const progress = 10 + (i / numCalls) * 40;
+            updateProgress(progress, `Veri çekiliyor: ${symbol}... Paket ${i + 1} / ${numCalls}`);
+            const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&endTime=${endTime}&limit=${candlesPerCall}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`API Hatası: ${response.status}`);
+            const klines = await response.json();
+            if (klines && klines.length > 0) {
+                allKlines = klines.concat(allKlines);
+                endTime = klines[0][0] - 1;
+            } else { break; }
+        }
+        return allKlines.filter((v, i, a) => a.findIndex(t => (t[0] === v[0])) === i).sort((a,b) => a[0] - b[0]).slice(-totalCandles);
+    }
+
+    const calculateSMA = (data, period) => {
+        if (data.length < period) return new Array(data.length).fill(null);
+        let sma = new Array(data.length).fill(null);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+            sum += data[i];
+            if (i >= period) {
+                sum -= data[i - period];
+                sma[i] = sum / period;
+            } else if (i === period - 1) {
+                sma[i] = sum / period;
+            }
+        }
+        return sma;
+    };
+
+    const calculateEMA = (data, period) => {
+        if (data.length < period) return new Array(data.length).fill(null);
+        let ema = new Array(data.length).fill(null);
+        const multiplier = 2 / (period + 1);
+        let sum = 0;
+        for (let i = 0; i < period; i++) sum += data[i];
+        ema[period - 1] = sum / period;
+        for (let i = period; i < data.length; i++) {
+            ema[i] = ((data[i] - ema[i - 1]) * multiplier) + ema[i - 1];
+        }
+        return ema;
+    };
+
+    const calculateRSI = (prices, period = 14) => {
+        let rsi = new Array(prices.length).fill(null);
+        let gains = 0, losses = 0;
+        for (let i = 1; i <= period; i++) {
+            if(prices[i] === undefined || prices[i-1] === undefined) continue;
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) { gains += diff; } else { losses -= diff; }
+        }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        for (let i = period + 1; i < prices.length; i++) {
+            const diff = prices[i] - prices[i - 1];
+            if (diff >= 0) {
+                avgGain = (avgGain * (period - 1) + diff) / period;
+                avgLoss = (avgLoss * (period - 1)) / period;
+            } else {
+                avgLoss = (avgLoss * (period - 1) - diff) / period;
+                avgGain = (avgGain * (period - 1)) / period;
+            }
+            if (avgLoss === 0) rsi[i] = 100; else {
+                const rs = avgGain / avgLoss;
+                rsi[i] = 100 - (100 / (1 + rs));
+            }
+        }
+        return rsi;
+    };
+
+    const strategies = {
+        rsi_plus_spot: { name: "RSI+ (Trend Filtreli)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const trendEma = calculateEMA(prices, 200); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 200; i < klines.length; i++) { if (prices[i] > trendEma[i] && rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (rsi[i-1] < 70 && rsi[i] >= 70 && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
+        rsi_reversal: { name: "RSI Geri Dönüşü (Spot)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 14; i < klines.length; i++) { if (rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (rsi[i-1] < 70 && rsi[i] >= 70 && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
+        ma_crossover: { name: "MA Kesişimi (Spot Trend)", type: 'spot', run: function(klines, initialBalance, commissionRate) { const prices = klines.map(k => parseFloat(k[4])); const smaShort = calculateSMA(prices, 20); const smaLong = calculateSMA(prices, 50); let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0; for (let i = 50; i < klines.length; i++) { if (smaShort[i-1] < smaLong[i-1] && smaShort[i] > smaLong[i] && cryptoAmount === 0) { const fee = balance * (commissionRate / 100); totalFees += fee; cryptoAmount = (balance - fee) / prices[i]; trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); balance = 0; } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && balance === 0) { const sellValue = cryptoAmount * prices[i]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') }); cryptoAmount = 0; } } if (cryptoAmount > 0) { const sellValue = cryptoAmount * prices[prices.length - 1]; const fee = sellValue * (commissionRate / 100); totalFees += fee; balance = sellValue - fee; } return { finalBalance: balance, trades, totalFees, liquidationCount: 0 }; }},
+        rsi_smart_leverage: { name: "Akıllı Kaldıraç RSI", type: 'leveraged', run: function(klines, initialBalance, settings) { const { positionSize, commissionRate, hourlyFundingRate } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = positionSize, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { const pnl = -marginUsed; totalBalance += pnl; liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { marginUsed = totalBalance; const leverage = positionSizeUsd / marginUsed; if (totalBalance <= 0 || leverage < 1) continue; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, leverage: leverage.toFixed(2), time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }},
+        rsi_leveraged: { name: "RSI Kaldıraçlı (Standart)", type: 'leveraged', run: function(klines, initialBalance, settings) { const { leverage, marginPercent, commissionRate, hourlyFundingRate, marginType } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = 0, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { let pnl = -marginUsed; if (marginType === 'cross') { pnl = -totalBalance; totalBalance = 0; } else { totalBalance += pnl; } liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; if (marginType === 'cross') break; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { marginUsed = totalBalance * (marginPercent / 100); if (totalBalance <= 0 || totalBalance < marginUsed) continue; positionSizeUsd = marginUsed * leverage; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }}
+    };
+
+    window.runBacktest = async function() {
+        document.getElementById('runBtn').disabled = true;
+        document.getElementById('downloadBtn').style.display = 'none';
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.style.display = 'none';
+        resultsDiv.innerHTML = '';
+        allResults = [];
+        try {
+            const selectedPeriods = Array.from(document.getElementById('timeframe').selectedOptions).map(opt => parseInt(opt.value));
+            if (selectedPeriods.length === 0) { throw new Error("Lütfen en az bir test periyodu seçin."); }
+            for (const daysToTest of selectedPeriods) {
+                const strategyKey = document.getElementById('strategy').value;
+                const selectedStrategy = strategies[strategyKey];
+                const pair = document.getElementById('pair').value;
+                const initialBalance = parseFloat(document.getElementById('initialBalance').value);
+                const interval = document.getElementById('interval').value;
+                const commissionRate = parseFloat(document.getElementById('commission').value);
+                const klines = await fetchKlines(pair, interval, daysToTest);
+                updateProgress(50, `Strateji yürütülüyor: ${daysToTest} günlük periyot...`);
+                let result;
+                if (selectedStrategy.type.includes('leveraged')) {
+                    const settings = { leverage: parseFloat(document.getElementById('leverage').value), marginPercent: parseFloat(document.getElementById('marginPercent').value), hourlyFundingRate: parseFloat(document.getElementById('fundingRate').value), marginType: document.getElementById('marginType').value, commissionRate, positionSize: parseFloat(document.getElementById('positionSize').value) };
+                    result = selectedStrategy.run(klines, initialBalance, settings);
+                } else {
+                    result = selectedStrategy.run(klines, initialBalance, commissionRate);
+                }
+                const params = { strategy: strategyKey, pair, interval, days: daysToTest, commission: commissionRate, leverage: selectedStrategy.type.includes('leveraged') ? document.getElementById('leverage').value : null, marginPercent: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginPercent').value : null, fundingRate: selectedStrategy.type.includes('leveraged') ? document.getElementById('fundingRate').value : null, marginType: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginType').value : null, positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null };
+                allResults.push({ ...result, initialBalance, params });
+            }
+            updateProgress(100, "Rapor oluşturuluyor...");
+            generateAndDisplayReport();
+        } catch (error) {
+            updateProgress(100, `Hata: ${error.message}`);
+            const progressBar = document.getElementById('progress-bar');
+            if(progressBar) progressBar.style.backgroundColor = 'var(--loss-color)';
+        } finally {
+            document.getElementById('runBtn').disabled = false;
+        }
+    };
+    
+    function generateAndDisplayReport() {
+        const resultsDiv = document.getElementById('results');
+        allResultsHtml = "";
+        allResults.forEach(result => {
+            const { finalBalance, initialBalance, trades, totalFees, liquidationCount, params } = result;
+            const grossPnl = finalBalance - initialBalance + totalFees;
+            const netPnl = finalBalance - initialBalance;
+            const pnlClass = netPnl >= 0 ? 'profit' : 'loss'; const pnlSign = netPnl >= 0 ? '+' : '';
+            const strategyName = strategies[params.strategy].name;
+            let periodText = "";
+            if (params.days >= 365) periodText = `${Math.round(params.days/365)} Yıl`; else if (params.days >= 30) periodText = `${Math.round(params.days/30)} Ay`; else if (params.days >= 7) periodText = `${params.days} Gün`; else periodText = `${params.days} Gün`;
+            let winCount = 0, totalProfit = 0, totalLoss = 0, tradeCount = 0;
+            if(params.leverage || params.positionSize) {
+                trades.forEach(trade => { if(trade.type === 'CLOSE' || trade.type === 'LIQUIDATION') { tradeCount++; if(trade.pnl > 0) { winCount++; totalProfit += trade.pnl; } else { totalLoss += Math.abs(trade.pnl); } } });
+            } else {
+                tradeCount = Math.floor(trades.length / 2); let lastBuyPrice = 0;
+                for (let i = 0; i < trades.length; i+=2) { if (trades[i] && trades[i+1]) { const pnl = (trades[i+1].price - trades[i].price); if (pnl > 0) { winCount++; totalProfit += pnl; } else { totalLoss += Math.abs(pnl); } } }
+            }
+            const winRate = tradeCount > 0 ? (winCount / tradeCount * 100).toFixed(2) : 0;
+            const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : (totalProfit > 0 ? '∞' : '0');
+            
+            let htmlReport = `<div class="report-section"><h3>Test Sonuçları: ${strategyName} - ${periodText}</h3><dl class="report-dl">`;
+            htmlReport += `<dt>Parite</dt><dd>${params.pair} (${params.interval})</dd>`;
+            if (params.leverage) { htmlReport += `<dt>Kaldıraç</dt><dd>${params.leverage}x (${params.marginType}) - %${params.marginPercent} Margin</dd>`;}
+            if (params.positionSize) { htmlReport += `<dt>İşlem Büyüklüğü</dt><dd>${params.positionSize} USD (Otomatik Kaldıraç)</dd>`;}
+            htmlReport += `<dt>Başlangıç Bak.</dt><dd>${initialBalance.toFixed(2)} USD</dd><dt>Son Bakiye</dt><dd>${finalBalance.toFixed(2)} USD</dd>`;
+            htmlReport += `<dt>Brüt Kâr/Zarar</dt><dd>${grossPnl.toFixed(2)} USD</dd><dt>Toplam Maliyet</dt><dd><span class="loss">${totalFees.toFixed(2)} USD</span></dd>`;
+            htmlReport += `<dt><strong>Net Kâr/Zarar</strong></dt><dd><strong class="${pnlClass}">${pnlSign}${netPnl.toFixed(2)} USD</strong></dd>`;
+            htmlReport += `<dt>Kazanma Oranı</dt><dd>${winRate}%</dd><dt>Kâr Faktörü</dt><dd>${profitFactor}</dd>`;
+            if (params.leverage || params.positionSize) { htmlReport += `<dt>Likidasyon</dt><dd><span class="loss">${liquidationCount} kez</span></dd>`;}
+            htmlReport += `</dl><h4>İşlem Kayıtları</h4><div class="log-container">`;
+            trades.forEach((trade, i) => {
+                if (trade.type === 'LONG') { htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="profit">LONG</span> @ ${trade.price.toFixed(4)} | Poz. Büyüklüğü: ${trade.size.toFixed(2)}$ ${trade.leverage ? `(${trade.leverage}x)` : ''} (${trade.time})</p>`; } 
+                else if (trade.type === 'CLOSE') { const pnlCls = trade.pnl >= 0 ? 'profit' : 'loss'; htmlReport += `<p>&nbsp;&nbsp;<span class="${pnlCls}">CLOSE</span> @ ${trade.price.toFixed(4)} | K/Z: ${trade.pnl.toFixed(2)}$ (%${trade.pnl_percent.toFixed(2)}) (${trade.time})</p>`; } 
+                else if (trade.type === 'LIQUIDATION') { htmlReport += `<p>&nbsp;&nbsp;<span class="loss">LİKİDASYON</span> @ ${trade.price.toFixed(4)} | Kayıp: ${Math.abs(trade.pnl).toFixed(2)}$ (${trade.time})</p>`; } 
+                else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
+            });
+            htmlReport += `</div></div>`;
+            allResultsHtml += htmlReport;
+        });
+        
+        resultsDiv.innerHTML = allResultsHtml;
+        resultsDiv.style.display = 'block';
+        document.getElementById('progress-container').style.display = 'none';
+        if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex';
+    };
+    
+    window.generateAndDownloadHtmlReport = function() {
+        if (!allResultsHtml) return;
+        const finalHtml = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Backtest Raporu</title><style>:root{--bg-color:#121212;--surface-color:#1e1e1e;--primary-color:#ffc107;--text-color:#e0e0e0;--border-color:#333;--profit-color:#00ff9d;--loss-color:#ff4d6a;}body{font-family:monospace;background-color:var(--bg-color);color:var(--text-color);padding:25px;line-height:1.7;} .container{max-width:800px;margin:auto;} h1{color:var(--primary-color);font-size:2em;margin-bottom:30px;} .report-section{margin-bottom:40px;} .report-section h3{font-size:1.5em;color:var(--primary-color);border-bottom:1px solid var(--border-color);padding-bottom:10px;margin-bottom:20px;} .report-dl{display:grid;grid-template-columns:max-content auto;gap:12px 25px;} .report-dl dt{font-weight:700;color:#aaa;} .report-dl dd{font-weight:700;font-size:1.1em;} .report-dl strong{font-size:1.4em;} .log-container{background-color:#0a0a0a;padding:15px;border-radius:8px;font-size:12px;margin-top:20px;max-height:400px;overflow-y:auto;} .log-container p{margin:5px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .profit{color:var(--profit-color);}.loss{color:var(--loss-color);}</style></head><body><div class="container"><h1>Backtest Sonuç Raporu</h1>${allResultsHtml}</div></body></html>`;
+        const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `pro_backtest_raporu.html`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+
+    window.onload = toggleSettings;
+}());
+</script>
+</body>
+</html>
