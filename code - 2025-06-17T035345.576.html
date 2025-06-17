@@ -222,7 +222,7 @@
             reportContent += `\n--- İŞLEM KAYITLARI ---\n`;
             resultsPre.innerHTML = reportContent;
             
-            let htmlLog = "";
+            let htmlReport = "";
             trades.forEach((trade, i) => {
                 let logLine = "";
                 if (trade.type === 'LONG') { logLine = `[${Math.floor(i/2)+1}] <span class="profit">LONG</span> @ ${trade.price.toFixed(4)} | Poz. Büyüklüğü: ${trade.size.toFixed(2)}$ (${trade.time})\n`;
@@ -234,15 +234,28 @@
                      const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; logLine = `[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})\n`;
                 }
                 resultsPre.innerHTML += logLine.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-                htmlLog += `<p>${logLine}</p>`;
+                htmlReport += `<p>${logLine}</p>`;
             });
+
+            fullHtmlReport = `<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><style>body{font-family:monospace;background:#121212;color:#e0e0e0;padding:20px;}p{margin:4px 0;}.profit{color:#00ff9d;}.loss{color:#ff4d6a;}</style></head><body><pre>` +
+                reportContent + htmlReport + '</pre></body></html>';
             
             resultsPre.style.display = 'block';
             document.getElementById('progress-container').style.display = 'none';
             if(trades.length > 0) document.getElementById('downloadBtn').style.display = 'block';
         };
         
-        window.generateAndDownloadHtmlReport = function() { /* Unchanged but correct */ };
+        window.generateAndDownloadHtmlReport = function() {
+            if(!fullHtmlReport) return;
+            const blob = new Blob([fullHtmlReport], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'backtest_raporu.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
 
         window.onload = toggleLeverageSettings;
     }());
