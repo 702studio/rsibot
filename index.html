@@ -28,8 +28,8 @@
         .chip-container { display:flex;flex-wrap:wrap;gap:6px; }
         .period-chip { padding:6px 12px;border:1px solid #555;border-radius:12px;cursor:pointer;font-size:13px;background-color:#333;color:var(--text-color);user-select:none; }
         .period-chip.selected { background-color:var(--primary-color);color:#121212; }
-        .strategy-grid { display:flex;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding-bottom:10px; }
-        .strategy-card { flex:0 0 auto;background-color:#333;padding:12px;border:1px solid #555;border-radius:8px;cursor:pointer;min-width:180px; }
+        .strategy-grid { display:flex;flex-wrap:wrap;gap:10px;padding-bottom:10px; }
+        .strategy-card { flex:1 0 calc(25% - 10px);background-color:#333;padding:10px;border:1px solid #555;border-radius:8px;cursor:pointer;min-width:120px;font-size:13px; }
         .strategy-card.selected { border-color:var(--primary-color);background-color:#444; }
         .strategy-card p { margin:6px 0;font-size:12px;color:var(--label-color); }
         .tags { display:flex;flex-wrap:wrap;gap:4px;margin-top:6px; }
@@ -64,6 +64,7 @@
             select,input,button{font-size:13px;padding:8px;}
             .config-grid{grid-template-columns:1fr;gap:10px;}
             .strategy-param-group{grid-template-columns:1fr;}
+            .strategy-card{flex:1 0 calc(50% - 10px);font-size:12px;}
             .action-buttons button{font-size:14px;padding:10px;}
             h1{font-size:1.2em;}
         }
@@ -951,11 +952,25 @@ window.applyRiskProfile = function() {
                 const commissionRate = parseFloat(document.getElementById('commission').value);
                 const klines = await fetchKlines(pair, interval, daysToTest);
                 updateProgress(50, `Strateji yürütülüyor: ${daysToTest} günlük periyot...`);
-                let result;
                 const compound = document.getElementById('compoundProfits').checked;
                 const sl = parseFloat(document.getElementById('stopLossPercent').value);
                 const tp = parseFloat(document.getElementById('takeProfitPercent').value);
                 const direction = document.getElementById('direction').value;
+                const grp = document.getElementById(`params-${strategyKey}`);
+                const readNum = name => { const el = grp ? grp.querySelector(`[name=${name}]`) : null; return el ? parseFloat(el.value) : undefined; };
+                const commonParams = {
+                    stopLossPercent: sl,
+                    takeProfitPercent: tp,
+                    rsiPeriod: readNum('rsiPeriod'),
+                    rsiBuyLevel: readNum('rsiBuyLevel'),
+                    emaPeriod: readNum('trendEmaPeriod'),
+                    shortPeriod: readNum('shortPeriod'),
+                    longPeriod: readNum('longPeriod'),
+                    bbPeriod: readNum('bbPeriod'),
+                    bbStd: readNum('bbStd'),
+                    direction
+                };
+                let result;
                 if (selectedStrategy.type.includes('leveraged')) {
                     const settings = {
                         leverage: parseFloat(document.getElementById('leverage').value),
@@ -965,28 +980,13 @@ window.applyRiskProfile = function() {
                         commissionRate,
                         positionSize: document.getElementById('positionSize') ? parseFloat(document.getElementById('positionSize').value) : undefined,
                         compound,
-                        stopLossPercent: sl,
-                        takeProfitPercent: tp,
-                        direction
+                        ...commonParams
                     };
                     result = selectedStrategy.run(klines, initialBalance, settings);
                 } else {
-                    const grp = document.getElementById(`params-${strategyKey}`);
-                    const readNum = name => { const el = grp ? grp.querySelector(`[name=${name}]`) : null; return el ? parseFloat(el.value) : undefined; };
-                    const params = {
-                        stopLossPercent: sl,
-                        takeProfitPercent: tp,
-                        rsiPeriod: readNum('rsiPeriod'),
-                        rsiBuyLevel: readNum('rsiBuyLevel'),
-                        emaPeriod: readNum('trendEmaPeriod'),
-                        shortPeriod: readNum('shortPeriod'),
-                        longPeriod: readNum('longPeriod'),
-                        bbPeriod: readNum('bbPeriod'),
-                        bbStd: readNum('bbStd')
-                    };
-                    result = selectedStrategy.run(klines, initialBalance, commissionRate, compound, params);
+                    result = selectedStrategy.run(klines, initialBalance, commissionRate, compound, commonParams);
                 }
-                  const equity = buildEquityCurve(result.trades, initialBalance);
+                const equity = buildEquityCurve(result.trades, initialBalance);
                 const params = {
                     strategy: strategyKey,
                     pair,
@@ -998,11 +998,7 @@ window.applyRiskProfile = function() {
                     fundingRate: selectedStrategy.type.includes('leveraged') ? document.getElementById('fundingRate').value : null,
                     marginType: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginType').value : null,
                     positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null,
-                    stopLossPercent: sl,
-                    takeProfitPercent: tp,
-                    bbPeriod: readNum('bbPeriod'),
-                    bbStd: readNum('bbStd'),
-                    direction: direction
+                    ...commonParams
                 };
                 allResults.push({ ...result, initialBalance, params, klines, equity });
             }
