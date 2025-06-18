@@ -1,0 +1,88 @@
+### **Geliştirme Dökümanı: Nihai Backtest Platformu v1.0**
+
+**Proje Kodu:** `PRO_BACKTEST_V1`
+**Tarih:** 18.06.2025
+**Hedef:** Mevcut backtest prototipini, profesyonel standartlarda risk yönetimi, üst düzey kullanıcı deneyimi ve gelişmiş görsel analiz yeteneklerine sahip, production-ready bir v1.0 aracına dönüştürmek.
+
+**Yönetici Asistana Not:** Bu döküman, geliştirme sürecimiz için anayasamız niteliğindedir.Öncelikle varolan index.html dosyamızın tarih ve saat içeren bir isimle yedekleyelim. Lütfen her adımı sırasıyla ve dikkatle uygula. Her fazın sonunda, tüm değişiklikleri içeren tek ve güncel bir `index.html` dosyası olarak çıktını bekliyor olacağım. Kodunun içine, özellikle karmaşık mantıkların olduğu yerlere açıklayıcı yorumlar eklemen, süreci birlikte daha verimli yönetmemizi sağlayacaktır. Herhangi bir belirsizlik durumunda soru sormaktan çekinme.
+
+---
+
+### **Faz 1: Çekirdek Mantığın Güçlendirilmesi ve Risk Yönetimi**
+
+**Amaç:** Platformun alım-satım motorunu, gerçek dünya ticaretinin vazgeçilmez unsurları olan risk yönetimi ve esneklik ile donatmak. Bu faz, tüm sistemin temelini oluşturduğu için en kritik aşamadır.
+
+**Görevler:**
+
+1.  **Risk Yönetimi Modülü Entegrasyonu (Stop-Loss & Take-Profit):**
+    * **UI Değişiklikleri:** "Maliyet & Kaldıraç Ayarları" bölümündeki `config-grid` içine şu iki yeni `config-item` eklenecek:
+        * `Zarar Durdur (%)` -> `id="stopLossPercent"`, `type="number"`, `value="0"` (0, deaktif anlamına gelir).
+        * `Kâr Al (%)` -> `id="takeProfitPercent"`, `type="number"`, `value="0"` (0, deaktif anlamına gelir).
+    * **Çekirdek Mantık Değişiklikleri:** Tüm stratejilerin `run` fonksiyonları güncellenmeli. Her bir mum (`kline`) için döngü içinde şu kontroller yapılmalı:
+        * Eğer pozisyon açıksa (LONG), mumun en düşük fiyatı (`kline[3]`) stop-loss seviyesine (`entryPrice * (1 - sl_percent / 100)`) değdi mi? Değdiyse, pozisyonu stop-loss fiyatından kapat. `trades` dizisine `{ type: 'STOP-LOSS', ... }` olarak kaydet.
+        * Eğer pozisyon hala açıksa, mumun en yüksek fiyatı (`kline[2]`) take-profit seviyesine (`entryPrice * (1 + tp_percent / 100)`) değdi mi? Değdiyse, pozisyonu take-profit fiyatından kapat. `trades` dizisine `{ type: 'TAKE-PROFIT', ... }` olarak kaydet.
+        * Bu iki koşul sağlanmadıysa, normal strateji çıkış sinyalini (örneğin RSI >= 70) kontrol et.
+
+2.  **İndikatör Parametrelerinin Dinamik Hale Getirilmesi:**
+    * **UI Değişiklikleri:** Arayüze, seçilen stratejiye göre dinamik olarak görünüp kaybolacak yeni input alanları ekle. Bu, `toggleSettings` fonksiyonu içinde yönetilecek. Örnek:
+        * "RSI+ (Trend Filtreli)" seçiliyse, `RSI Periyodu`, `RSI Alım Seviyesi`, `Trend EMA Periyodu` gibi inputlar görünür olacak.
+    * **Çekirdek Mantık Değişiklikleri:** `runBacktest` fonksiyonu, bu yeni UI elemanlarından değerleri okumalı ve ilgili stratejinin `run` fonksiyonuna bir `params` objesi olarak iletmeli. Strateji fonksiyonları ve indikatör hesaplama fonksiyonları (`calculateRSI`, `calculateEMA` vb.) bu parametreleri kullanacak şekilde güncellenmeli.
+
+3.  **"Short" (Kısa) Pozisyon Yeteneğinin Eklenmesi:**
+    * **UI Değişiklikleri:** "Genel Ayarlar" bölümüne "İşlem Yönü" adında yeni bir `<select>` kutusu ekle. Seçenekler: `Sadece Long`, `Sadece Short`, `Her İkisi`.
+    * **Çekirdek Mantık Değişiklikleri:** Bu, en kapsamlı mantık değişikliğidir.
+        * Tüm stratejilerin `run` fonksiyonları, seçilen işlem yönüne göre davranmalıdır.
+        * `Sadece Short` veya `Her İkisi` seçildiğinde, stratejilerde "short" giriş (örn: RSI > 70) ve "short" çıkış (örn: RSI < 50) koşulları tanımlanmalı.
+        * Kâr/Zarar (PnL) hesaplaması "short" pozisyonlar için tersine çevrilmelidir: `pnl = positionSize * (entryPrice - exitPrice) / exitPrice`.
+        * Likidasyon fiyatı hesabı "short" pozisyonlar için yukarı yönlü olmalıdır: `liquidationPrice = entryPrice * (1 + (1 / leverage))`.
+
+---
+
+### **Faz 2: Kullanıcı Deneyimi (UX) ve Arayüz (UI) Devrimi**
+
+**Amaç:** Platformu, Dieter Rams'ın prensiplerine uygun, estetik, anlaşılır ve kullanması keyifli bir araca dönüştürmek. Standart HTML elemanlarından kurtulup, amaca yönelik özel bir deneyim yaratacağız.
+
+**Görevler:**
+
+1.  **Strateji Seçimini "Strateji Kartları"na Dönüştürme:**
+    * **HTML Değişiklikleri:** Mevcut "Strateji Seçin" `<select>` kutusunu tamamen kaldır. Yerine, her strateji için bilgi içeren kartların olduğu bir `div` (örneğin `id="strategy-cards-container"`) yerleştir. Her kart `data-strategy="strategy_key"` şeklinde bir attribute içermelidir.
+    * **CSS Değişiklikleri:** Önceki yazışmamızda detaylandırdığımız `.strategy-card`, `.strategy-grid`, `.selected` gibi sınıfları CSS'e ekle.
+    * **JavaScript Değişiklikleri:** Kartlara tıklandığında `selected` class'ını yönetecek ve seçilen stratejinin anahtarını (`data-strategy` değerini) bir değişkende saklayacak event listener'lar ekle. `toggleSettings` fonksiyonu artık bu değişkene göre çalışacak.
+
+2.  **Arayüz Yerleşimini İyileştirme (Layout Refinement):**
+    * **HTML/CSS Değişiklikleri:** "Genel Ayarlar" ve "Maliyet & Kaldıraç Ayarları" içindeki `config-grid` yapısını, mantıksal olarak ilişkili elemanları (örn: Parite, Zaman Aralığı, Bakiye) yan yana getirecek şekilde yeniden düzenle. `full-width` kullanımını minimize et.
+
+3.  **Bağlama Duyarlı (Context-Aware) Arayüz:**
+    * **JavaScript Değişiklikleri:** `toggleSettings` fonksiyonunu daha akıllı hale getir. Seçilen strateji kartının türüne (örn: `spot` veya `leveraged`) göre, sadece kaldıraç ayarlarını değil, aynı zamanda `Fonlama Oranı` gibi tamamen ilgisiz alanları da `display: none;` ile gizle. Arayüz, kullanıcının seçimine anında adapte olmalı.
+
+---
+
+### **Faz 3: Görsel Analiz ve İçgörü**
+
+**Amaç:** Kullanıcının, test sonuçlarını sadece sayılarla değil, profesyonel bir trader gibi grafikler üzerinde görsel olarak analiz etmesini sağlamak. "Neden" sorusunun cevabını bir bakışta vereceğiz.
+
+**Görevler:**
+
+1.  **Lightweight Charts Kütüphanesinin Entegrasyonu:**
+    * **HTML Değişiklikleri:** Mevcut `<script>` etiketinden önce Lightweight Charts'ın CDN linkini `<head>` veya `<body>` sonuna ekle.
+        `<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>`
+
+2.  **Bakiye Eğrisi Grafiği (Equity Curve Chart) Oluşturma:**
+    * **Veri Hazırlığı:** Backtest motoru çalışırken, her bir kapalı işlem (`CLOSE`, `STOP-LOSS`, `TAKE-PROFIT`, `LIQUIDATION`) sonrası oluşan yeni bakiyeyi ve işlem zamanını `{ time: 'YYYY-MM-DD', value: newBalance }` formatında bir diziye kaydet.
+    * **Grafik Çizdirme:** Rapor sonuçları gösterilirken, bu bakiye dizisini kullanarak `addLineSeries` ile bir bakiye eğrisi grafiği çizdir. Grafik, ilgili rapor bölümünün en üstünde yer almalı.
+
+3.  **Fiyat Grafiği ve İşlem İşaretçileri (Trade Markers):**
+    * **Veri Hazırlığı:**
+        * `klines` verisini, `{ time, open, high, low, close }` formatında `candlestickData` dizisine dönüştür. (Zaman damgasının saniye cinsinden olması gerektiğini unutma).
+        * `trades` dizisini, `{ time, position, color, shape, text }` formatında `markersData` dizisine dönüştür. (ALIM için `arrowUp`, SATIM için `arrowDown`).
+    * **Grafik Çizdirme:**
+        * Bakiye eğrisi grafiğinin altına, ikinci bir grafik alanı oluştur.
+        * `addCandlestickSeries` kullanarak mum grafiğini çizdir.
+        * `candlestickSeries.setMarkers(markersData)` metodu ile alım/satım sinyallerini grafik üzerine işaretle.
+
+---
+
+**Nihai Talimat:**
+Lütfen bu üç fazı sırasıyla tamamla. Her fazın sonunda ortaya çıkan güncel ve tam `index.html` dosyasını bana sun. Bu sistematik ilerleyiş, projemizi başarıya ulaştıracaktır.
+
+Birlikte olağanüstü ve kâr üreten bir araç yaratacağız. Başlayabilirsin.
