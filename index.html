@@ -198,7 +198,11 @@ window.applyRiskProfile = function() {
         if (profile === "manual") {
             tpInput.disabled = false;
         } else {
-            const sl = parseFloat(slInput.value) || 0;
+            let sl = parseFloat(slInput.value);
+            if (!sl || sl <= 0) {
+                sl = profile === "balanced" ? 1 : 1;
+                slInput.value = sl.toFixed(2);
+            }
             tpInput.value = profile === "balanced" ? (sl * 2).toFixed(2) : (sl * 3).toFixed(2);
             tpInput.disabled = true;
         }
@@ -878,7 +882,7 @@ window.applyRiskProfile = function() {
                         hourlyFundingRate: parseFloat(document.getElementById('fundingRate').value),
                         marginType: document.getElementById('marginType').value,
                         commissionRate,
-                        positionSize: parseFloat(document.getElementById('positionSize').value),
+                        positionSize: document.getElementById('positionSize') ? parseFloat(document.getElementById('positionSize').value) : undefined,
                         compound,
                         stopLossPercent: sl,
                         takeProfitPercent: tp,
