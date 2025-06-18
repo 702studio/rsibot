@@ -4,3 +4,4 @@ Arayuzde zaman araligi olarak 1m, 15m ve 30m secenekleri eklendi. Test periyotla
 
 Strateji degistirdiginizde ilgili varsayilan ayarlar otomatik olarak alanlara doldurulur. Bu degerleri manuel olarak degistirip kendi presetlerinizi olusturabilirsiniz.
 \n`index.html` dosyasi 508 versiyonunun gelistirilmis surumudur ve tum hatalar giderilmis olarak calisir.
+\nRisk profili secenegi ile stop-loss ve take-profit oranlarini hizlica degistirebilirsiniz. Manual disindaki profiller TP degerini otomatik hesaplar ve alan pasif olur.\nAyrica grafikler Lightweight Charts kutuphanesi kullanilarak gosterilir; backtest sonrasi bakiye egirisi ve fiyat grafigi otomatik cizilir.

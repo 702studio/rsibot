@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {--bg-color:#101214;--surface-color:#1b1d1f;--primary-color:#ffcc33;--primary-hover:#e0a021;--text-color:#e0e0e0;--label-color:#bbb;--border-color:#333;--profit-color:#00ff9d;--loss-color:#ff4d6a;}
         body { font-family:'Funnel Sans',sans-serif;background-color:var(--bg-color);color:var(--text-color);padding:15px;line-height:1.7;font-size:15px;margin:0; }
@@ -28,16 +27,6 @@
         .chip-container { display:flex;flex-wrap:wrap;gap:6px; }
         .period-chip { padding:6px 12px;border:1px solid #555;border-radius:12px;cursor:pointer;font-size:13px;background-color:#333;color:var(--text-color);user-select:none; }
         .period-chip.selected { background-color:var(--primary-color);color:#121212; }
-        .strategy-grid { display:flex;flex-wrap:wrap;gap:10px; }
-        .strategy-card { flex:1 1 180px;background-color:#333;padding:12px;border:1px solid #555;border-radius:8px;cursor:pointer; }
-        .strategy-card.selected { border-color:var(--primary-color);background-color:#444; }
-        .toggle { position:relative;display:inline-block;width:40px;height:20px; }
-        .toggle input { opacity:0;width:0;height:0; }
-        .toggle .slider { position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#555;transition:.4s;border-radius:20px; }
-        .toggle .slider:before { position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background-color:white;transition:.4s;border-radius:50%; }
-        .toggle input:checked + .slider { background-color:var(--primary-color); }
-        .toggle input:checked + .slider:before { transform:translateX(20px); }
-        .chart-container { height:300px;margin-bottom:20px; }
         optgroup { font-style:italic;background-color:#252525;color:var(--label-color); }
         #leverage-settings, #smart-leverage-settings { display:none; }
         .action-buttons { display:flex;gap:15px; }
@@ -65,7 +54,8 @@
         <div class="section">
             <h2>Genel Ayarlar</h2>
             <div class="config-grid">
-                <div class="config-item full-width"><label for="strategy">Strateji Seçin</label><select id="strategy" style="display:none" onchange="toggleSettings()"><optgroup label="--- Akıllı Kaldıraç ---"><option value="rsi_smart_leverage" selected>Akıllı Kaldıraç RSI</option></optgroup><optgroup label="--- Standart Kaldıraç ---"><option value="rsi_leveraged">RSI Kaldıraçlı (Standart)</option></optgroup><optgroup label="--- Spot Stratejileri ---"><option value="rsi_plus_spot">RSI+ (Trend Filtreli)</option><option value="rsi_reversal">RSI Geri Dönüşü (Standart)</option><option value="ma_crossover">MA Kesişimi (Trend Takip)</option><option value="bollinger_bands">Bollinger Bandı (Volatilite)</option></optgroup></select><div id="strategy-cards" class="strategy-grid"></div></div>
+                <div class="config-item full-width"><label for="strategy">Strateji Seçin</label><select id="strategy" onchange="toggleSettings()"><optgroup label="--- Akıllı Kaldıraç ---"><option value="rsi_smart_leverage" selected>Akıllı Kaldıraç RSI</option></optgroup><optgroup label="--- Standart Kaldıraç ---"><option value="rsi_leveraged">RSI Kaldıraçlı (Standart)</option></optgroup><optgroup label="--- Spot Stratejileri ---"><option value="rsi_plus_spot">RSI+ (Trend Filtreli)</option><option value="rsi_reversal">RSI Geri Dönüşü (Standart)</option><option value="ma_crossover">MA Kesişimi (Trend Takip)</option><option value="bollinger_bands">Bollinger Bandı (Volatilite)</option></optgroup></select></div>
+                <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
                 <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
                 <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
                 <div class="config-item"><label for="direction">İşlem Yönü</label><select id="direction"><option value="long" selected>Sadece Long</option><option value="short">Sadece Short</option><option value="both">Her İkisi</option></select></div>
@@ -81,10 +71,9 @@
             <div class="config-grid">
                 <div class="config-item"><label for="commission">İşlem Komisyonu (%)</label><input type="number" id="commission" value="0.04" step="0.01"></div>
                 <div class="config-item"><label for="fundingRate">Saatlik Fonlama (%)</label><input type="number" id="fundingRate" value="0.00125" step="0.0001"></div>
-                <div class="config-item full-width"><label for="compoundProfits">Kârı İşleme Ekle</label><label class="toggle"><input type="checkbox" id="compoundProfits" checked><span class="slider"></span></label></div>
+                <div class="config-item full-width"><label><input type="checkbox" id="compoundProfits" checked> Kârı İşleme Ekle</label></div>
                     <div class="config-item"><label for="stopLossPercent">Zarar Durdur (%)</label><input type="number" id="stopLossPercent" value="0"></div>
                     <div class="config-item"><label for="takeProfitPercent">Kâr Al (%)</label><input type="number" id="takeProfitPercent" value="0"></div>
-                    <div class="config-item"><label for="riskProfile">Risk Yönetim Profili</label><select id="riskProfile" onchange="applyRiskProfile()"><option value="manual" selected>Manuel Ayar</option><option value="balanced">Dengeli Büyüme (1:2 R:R)</option><option value="aggressive">Agresif Fırsatçı (1:3 R:R)</option></select></div>
                 <div id="leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
                     <div class="config-item"><label for="marginType">Margin Tipi</label>
                         <select id="marginType">
@@ -102,9 +91,10 @@
         </div>
         <div class="action-buttons"><button id="runBtn" onclick="runBacktest()">Backtest'i Başlat</button><button id="downloadBtn" onclick="generateAndDownloadHtmlReport()" style="display:none;">Raporu İndir</button></div>
         <div id="progress-container"></div>
-        <div id="results"><div id="equityChart" class="chart-container"></div><div id="priceChart" class="chart-container"></div></div>
+        <div id="results"></div>
     </div>
 
+<script>
 
 (function() {
     let allResultsHtml = "";
@@ -145,34 +135,12 @@
             container.appendChild(chip);
         });
     }
-    function initStrategyCards() {
-        const select = document.getElementById("strategy");
-        const container = document.getElementById("strategy-cards");
-        Array.from(select.options).forEach(opt => {
-            const card = document.createElement("div");
-            card.className = "strategy-card";
-            card.dataset.strategy = opt.value;
-            card.textContent = opt.textContent;
-            card.addEventListener("click", () => {
-                document.querySelectorAll(".strategy-card").forEach(c => c.classList.remove("selected"));
-                card.classList.add("selected");
-                select.value = opt.value;
-                toggleSettings();
-            });
-            container.appendChild(card);
-        });
-        container.querySelector(".strategy-card").classList.add("selected");
-    }
-
-    }
 
     window.toggleSettings = function() {
         const strategy = document.getElementById('strategy').value;
-        const stratObj = strategies[strategy];
-        const isSpot = stratObj && stratObj.type === "spot";
-        document.getElementById("leverage-settings").style.display = isSpot ? "none" : (strategy === "rsi_leveraged" ? "grid" : "none");
-        document.getElementById("smart-leverage-settings").style.display = strategy === "rsi_smart_leverage" ? "grid" : "none";
-        document.getElementById("fundingRate").parentElement.style.display = isSpot ? "none" : "block";
+        document.getElementById('leverage-settings').style.display = (strategy === 'rsi_leveraged') ? 'grid' : 'none';
+        document.getElementById('smart-leverage-settings').style.display = (strategy === 'rsi_smart_leverage') ? 'grid' : 'none';
+        const container = document.getElementById("strategy-settings");
         container.innerHTML = "";
         if(strategy === "rsi_plus_spot"){
             container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_plus_spot.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_plus_spot.rsiBuyLevel}"></div><div class="config-item"><label for="trendEmaPeriod">Trend EMA Periyodu</label><input type="number" id="trendEmaPeriod" value="${defaultSettings.rsi_plus_spot.emaPeriod}"></div>`;
@@ -190,18 +158,6 @@
             if (d.hourlyFundingRate !== undefined) document.getElementById('fundingRate').value = d.hourlyFundingRate;
             if (d.marginType !== undefined) document.getElementById('marginType').value = d.marginType;
             if (d.positionSize !== undefined) document.getElementById('positionSize').value = d.positionSize;
-        }
-    };
-window.applyRiskProfile = function() {
-        const profile = document.getElementById("riskProfile").value;
-        const slInput = document.getElementById("stopLossPercent");
-        const tpInput = document.getElementById("takeProfitPercent");
-        if (profile === "manual") {
-            tpInput.disabled = false;
-        } else {
-            const sl = parseFloat(slInput.value) || 0;
-            tpInput.value = profile === "balanced" ? (sl * 2).toFixed(2) : (sl * 3).toFixed(2);
-            tpInput.disabled = true;
         }
     };
 
@@ -289,20 +245,6 @@ window.applyRiskProfile = function() {
             }
         }
         return rsi;
-    };
-    function buildEquityCurve(trades, initial) {
-        let balance = initial;
-        const curve = [{ time: Date.now()/1000, value: initial }];
-        trades.forEach(t => {
-            if(t.pnl !== undefined) {
-                balance += t.pnl;
-                const time = t.time === "Test Sonu" ? Date.now()/1000 : Math.floor(new Date(t.time).getTime()/1000);
-                curve.push({ time, value: balance });
-            }
-        });
-        return curve;
-    }
-
     };
 
     const strategies = {
@@ -902,7 +844,6 @@ window.applyRiskProfile = function() {
                     };
                     result = selectedStrategy.run(klines, initialBalance, commissionRate, compound, params);
                 }
-                  const equity = buildEquityCurve(result.trades, initialBalance);
                 const params = {
                     strategy: strategyKey,
                     pair,
@@ -919,7 +860,7 @@ window.applyRiskProfile = function() {
                     bbPeriod: document.getElementById('bbPeriod') ? document.getElementById('bbPeriod').value : null,
                     bbStd: document.getElementById('bbStd') ? document.getElementById('bbStd').value : null,
                     direction
-                allResults.push({ ...result, initialBalance, params, klines, equity });
+                };
                 allResults.push({ ...result, initialBalance, params });
             }
             updateProgress(100, "Rapor oluşturuluyor...");
@@ -975,24 +916,11 @@ window.applyRiskProfile = function() {
             allResultsHtml += htmlReport;
         });
         
-        if(allResults.length>0){ renderCharts(allResults[0].equity, allResults[0].klines, allResults[0].trades); }
         resultsDiv.innerHTML = allResultsHtml;
         resultsDiv.style.display = 'block';
         document.getElementById('progress-container').style.display = 'none';
         if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex';
     };
-    function renderCharts(equity, klines, trades){
-        const eqDiv=document.getElementById("equityChart");
-        const prDiv=document.getElementById("priceChart");
-        eqDiv.innerHTML=""; prDiv.innerHTML="";
-        const ec=LightweightCharts.createChart(eqDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
-        ec.addLineSeries({color:"#ffcc33"}).setData(equity);
-        const pc=LightweightCharts.createChart(prDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
-        const candleSeries=pc.addCandlestickSeries();
-        candleSeries.setData(klines.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]})));
-        candleSeries.setMarkers(trades.map(t=>({time:Math.floor(new Date(t.time==="Test Sonu"?Date.now():t.time).getTime()/1000),position:(t.type==="BUY"||t.type==="LONG")?"below":"above",color:(t.type==="BUY"||t.type==="LONG")?"#0f0":"#f00",shape:(t.type==="BUY"||t.type==="LONG")?"arrowUp":"arrowDown",text:t.type})));
-    }
-
     
     window.generateAndDownloadHtmlReport = function() {
         if (!allResultsHtml) return;
@@ -1005,9 +933,6 @@ window.applyRiskProfile = function() {
 
     window.onload = function(){
         initPeriodChips();
-        initStrategyCards();
-        applyRiskProfile();
-        document.getElementById("stopLossPercent").addEventListener("input", applyRiskProfile);
         toggleSettings();
     };
 }());
