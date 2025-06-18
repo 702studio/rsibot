@@ -143,6 +143,8 @@
         .profit { color:var(--profit-color); } .loss { color:var(--loss-color); }
         .strategy-param-group{display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;}
         @media (max-width:600px){
+            .chart-container{height:200px;}
+            .chart-container.zoomed{height:350px;}
             body{font-size:13px;padding:10px;}
             select,input,button{font-size:13px;padding:8px;}
             .config-grid{grid-template-columns:1fr;gap:10px;}
@@ -492,7 +494,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -503,7 +505,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -516,14 +518,14 @@ window.applyRiskProfile = function() {
                         cryptoAmount = (tradeBal - fee) / prices[i];
                         entryPrice = prices[i];
                         if (compound) balance -= tradeBal;
-                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                     } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
                         const sellValue = cryptoAmount * prices[i];
                         const fee = sellValue * (commissionRate / 100);
                         totalFees += fee;
                         const result = sellValue - fee;
                         if (compound) balance += result; else totalProfit += result - initialBalance;
-                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                         cryptoAmount = 0;
                         if (!compound) balance = initialBalance;
                     }
@@ -569,7 +571,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -580,7 +582,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -593,14 +595,14 @@ window.applyRiskProfile = function() {
                         cryptoAmount = (tradeBal - fee) / prices[i];
                         entryPrice = prices[i];
                         if (compound) balance -= tradeBal;
-                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                     } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
                         const sellValue = cryptoAmount * prices[i];
                         const fee = sellValue * (commissionRate / 100);
                         totalFees += fee;
                         const result = sellValue - fee;
                         if (compound) balance += result; else totalProfit += result - initialBalance;
-                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                         cryptoAmount = 0;
                         if (!compound) balance = initialBalance;
                     }
@@ -647,7 +649,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -658,7 +660,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -671,14 +673,14 @@ window.applyRiskProfile = function() {
                         cryptoAmount = (tradeBal - fee) / prices[i];
                         entryPrice = prices[i];
                         if (compound) balance -= tradeBal;
-                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                     } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && cryptoAmount > 0) {
                         const sellValue = cryptoAmount * prices[i];
                         const fee = sellValue * (commissionRate / 100);
                         totalFees += fee;
                         const result = sellValue - fee;
                         if (compound) balance += result; else totalProfit += result - initialBalance;
-                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                         cryptoAmount = 0;
                         if (!compound) balance = initialBalance;
                     }
@@ -733,7 +735,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -744,7 +746,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const result = sellValue - fee;
                             if (compound) balance += result; else totalProfit += result - initialBalance;
-                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toISOString() });
                             cryptoAmount = 0;
                             if (!compound) balance = initialBalance;
                             continue;
@@ -757,14 +759,14 @@ window.applyRiskProfile = function() {
                         cryptoAmount = (tradeBal - fee) / prices[i];
                         entryPrice = prices[i];
                         if (compound) balance -= tradeBal;
-                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                     } else if (prices[i-1] > upper[i-1] && prices[i] < upper[i] && cryptoAmount > 0) {
                         const sellValue = cryptoAmount * prices[i];
                         const fee = sellValue * (commissionRate / 100);
                         totalFees += fee;
                         const result = sellValue - fee;
                         if (compound) balance += result; else totalProfit += result - initialBalance;
-                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toISOString() });
                         cryptoAmount = 0;
                         if (!compound) balance = initialBalance;
                     }
@@ -816,7 +818,7 @@ window.applyRiskProfile = function() {
                             let pnl = -marginUsed;
                             if (marginType === 'cross') { pnl = -balance; balance = 0; } else { balance += pnl; }
                             liquidationCount++;
-                            trades.push({ type:'LIQUIDATION', price: liqPrice, pnl, time:new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type:'LIQUIDATION', price: liqPrice, pnl, time:new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             if (marginType === 'cross') break;
                             continue;
@@ -829,7 +831,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type:'STOP-LOSS', price: exitPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type:'STOP-LOSS', price: exitPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -841,7 +843,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type:'TAKE-PROFIT', price: exitPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type:'TAKE-PROFIT', price: exitPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -851,7 +853,7 @@ window.applyRiskProfile = function() {
                             balance -= fee; totalFees += fee;
                             const pnl = exitValue - positionSizeUsd;
                             balance += pnl;
-                            trades.push({ type:'CLOSE', price: currentPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type:'CLOSE', price: currentPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -861,7 +863,7 @@ window.applyRiskProfile = function() {
                             balance -= fee; totalFees += fee;
                             const pnl = positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type:'CLOSE', price: currentPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type:'CLOSE', price: currentPrice, pnl, pnl_percent:(pnl/marginUsed)*100, time:new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -883,7 +885,7 @@ window.applyRiskProfile = function() {
                             side = 'short';
                         }
                         if (side) {
-                            trades.push({ type: side==='long' ? 'LONG' : 'SHORT', price: entryPrice, size: positionSizeUsd, leverage: leverage.toFixed(2), time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: side==='long' ? 'LONG' : 'SHORT', price: entryPrice, size: positionSizeUsd, leverage: leverage.toFixed(2), time: new Date(klines[i][0]).toISOString() });
                             inPosition = true;
                         } else {
                             balance += fee;
@@ -941,7 +943,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type: 'STOP-LOSS', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'STOP-LOSS', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -953,7 +955,7 @@ window.applyRiskProfile = function() {
                             totalFees += fee;
                             const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type: 'TAKE-PROFIT', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'TAKE-PROFIT', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -963,7 +965,7 @@ window.applyRiskProfile = function() {
                             balance -= fee; totalFees += fee;
                             const pnl = exitValue - positionSizeUsd;
                             balance += pnl;
-                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -973,7 +975,7 @@ window.applyRiskProfile = function() {
                             balance -= fee; totalFees += fee;
                             const pnl = positionSizeUsd - exitValue;
                             balance += pnl;
-                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toISOString() });
                             inPosition = false;
                             continue;
                         }
@@ -994,7 +996,7 @@ window.applyRiskProfile = function() {
                             side = 'short';
                         }
                         if (side) {
-                            trades.push({ type: side === 'long' ? 'LONG' : 'SHORT', price: entryPrice, size: positionSizeUsd, leverage, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            trades.push({ type: side === 'long' ? 'LONG' : 'SHORT', price: entryPrice, size: positionSizeUsd, leverage, time: new Date(klines[i][0]).toISOString() });
                             inPosition = true;
                         } else {
                             balance += fee;
@@ -1155,10 +1157,16 @@ window.applyRiskProfile = function() {
         ec.addLineSeries({color:"#ffcc33"}).setData(equity);
         const pc=LightweightCharts.createChart(prDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
         const candleSeries=pc.addCandlestickSeries();
-        candleSeries.setData(klines.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]})));
-        candleSeries.setMarkers(trades.map(t=>({time:Math.floor(new Date(t.time==="Test Sonu"?Date.now():t.time).getTime()/1000),position:(t.type==="BUY"||t.type==="LONG")?"below":"above",color:(t.type==="BUY"||t.type==="LONG")?"#0f0":"#f00",shape:(t.type==="BUY"||t.type==="LONG")?"arrowUp":"arrowDown",text:t.type})));
-        eqDiv.addEventListener('dblclick', () => eqDiv.classList.toggle('zoomed'));
-        prDiv.addEventListener('dblclick', () => prDiv.classList.toggle('zoomed'));
+        const candles = klines.map(k => ({ time: Math.floor(k[0]/1000), open:+k[1], high:+k[2], low:+k[3], close:+k[4] }));
+        candleSeries.setData(candles);
+        const lastTime = candles[candles.length - 1]?.time || Math.floor(Date.now()/1000);
+        const markers = trades.map(t => {
+            const tUnix = t.time === "Test Sonu" ? lastTime : Math.floor(new Date(t.time).getTime()/1000);
+            return { time: tUnix, position:(t.type=="BUY"||t.type=="LONG")?"below":"above", color:(t.type=="BUY"||t.type=="LONG")?"#0f0":"#f00", shape:(t.type=="BUY"||t.type=="LONG")?"arrowUp":"arrowDown", text:t.type };
+        });
+        candleSeries.setMarkers(markers);
+        eqDiv.addEventListener("dblclick", () => eqDiv.classList.toggle('zoomed'));
+        prDiv.addEventListener("dblclick", () => prDiv.classList.toggle('zoomed'));
     }
 
     
