@@ -121,7 +121,8 @@
         .toggle .slider:before { position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background-color:white;transition:.4s;border-radius:50%; }
         .toggle input:checked + .slider { background-color:var(--primary-color); }
         .toggle input:checked + .slider:before { transform:translateX(20px); }
-        .chart-container { height:300px;margin-bottom:20px; }
+        .chart-container { height:300px;margin-bottom:20px;width:100%;cursor:zoom-in; }
+        .chart-container.zoomed { height:500px; cursor:zoom-out; }
         optgroup { font-style:italic;background-color:#252525;color:var(--label-color); }
         #leverage-settings, #smart-leverage-settings { display:none; }
         .action-buttons { display:flex;gap:15px; }
@@ -135,7 +136,9 @@
         #results { display:none;margin-top:25px; }
         .report-section { background-color:var(--surface-color); padding:20px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px; }
         .report-section h3 { margin-top:0; color:var(--primary-color); border-bottom:1px solid var(--border-color); padding-bottom:10px; }
-        .report-dl { display:grid;grid-template-columns:max-content auto;gap:10px 20px; } .report-dl dt { grid-column-start:1;font-weight:700;color:var(--label-color); } .report-dl dd { grid-column-start:2; }
+        .report-dl { display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 20px; } 
+        .report-dl dt { font-weight:700;color:var(--label-color); } 
+        .report-dl dd { }
         .report-dl strong { font-size:1.2em; } .log-container { font-size:12px; max-height:300px; overflow-y:auto; } .log-container p { margin:4px 0; }
         .profit { color:var(--profit-color); } .loss { color:var(--loss-color); }
         .strategy-param-group{display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;}
@@ -1139,8 +1142,8 @@ window.applyRiskProfile = function() {
             chartJobs.push({eqId,prId,equity:result.equity,klines:result.klines,trades});
         });
         resultsDiv.innerHTML = allResultsHtml;
-        chartJobs.forEach(job=>renderCharts(job.equity, job.klines, job.trades, job.eqId, job.prId));
         resultsDiv.style.display = 'block';
+        chartJobs.forEach(job=>renderCharts(job.equity, job.klines, job.trades, job.eqId, job.prId));
         document.getElementById('progress-container').style.display = 'none';
         if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex';
     };
@@ -1154,6 +1157,8 @@ window.applyRiskProfile = function() {
         const candleSeries=pc.addCandlestickSeries();
         candleSeries.setData(klines.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]})));
         candleSeries.setMarkers(trades.map(t=>({time:Math.floor(new Date(t.time==="Test Sonu"?Date.now():t.time).getTime()/1000),position:(t.type==="BUY"||t.type==="LONG")?"below":"above",color:(t.type==="BUY"||t.type==="LONG")?"#0f0":"#f00",shape:(t.type==="BUY"||t.type==="LONG")?"arrowUp":"arrowDown",text:t.type})));
+        eqDiv.addEventListener('dblclick', () => eqDiv.classList.toggle('zoomed'));
+        prDiv.addEventListener('dblclick', () => prDiv.classList.toggle('zoomed'));
     }
 
     
