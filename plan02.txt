@@ -1,0 +1,57 @@
+Geliştirme Planı: Nihai Backtest Platformu (Definitive Edition)
+Proje Kodu: PRO_BACKTEST_V2.0_DEFINITIVE
+Tarih: 18.06.2025
+Proje Hedefi: Mevcut, Faz 1'i tamamlanmış backtest platformunu, tüm fonksiyonları doğrulanmış, hataları ayıklanmış ve bu dökümanda belirtilen tüm UI/UX ve stratejik geliştirmeleri içeren, son kullanıcıya sunulmaya hazır, kusursuz bir v2.0 aracına dönüştürmek.
+
+Yönetici Asistana Yönelik Genel Talimatlar:
+Bu, projemizin nihai ve tek geliştirme planıdır. Aşağıdaki adımları harfiyen ve sırasıyla uygulaman beklenmektedir. Her faz, bir öncekinin üzerine inşa edilmiştir. Çalışmaya başlamadan önce ve her fazın sonunda, süreci ve sonuçları net bir şekilde raporla.
+
+Faz 1: Kod Sağlamlaştırma ve Mevcut Geliştirmeleri Doğrulama
+Amaç: "Faz 1'de yapıldı" olarak belirtilen geliştirmelerin (Risk Yönetimi, Dinamik Parametreler vb.) ve temel Compounding mekanizmasının hatasız çalıştığını test senaryoları ile %100 doğrulamak ve kod tabanını sonraki geliştirmeler için stabil hale getirmek.
+
+Görev 1.1: Yedekleme (En Kritik Adım):
+
+Çalışmaya başlamadan önceki ilk ve en önemli adım olarak, mevcut index.html dosyasının bir kopyasını oluştur ve index_backup_YYYYMMDD.html olarak adlandır.
+Bu işlemi tamamladığını onaylamadan bir sonraki adıma kesinlikle geçme.
+Görev 1.2: Compounding Mekanizması Denetimi:
+
+Önceki planda "Faz 0" olarak tanımlanan test senaryosunu uygula.
+Senaryo: RSI Kaldıraçlı, 10.000$ bakiye, %10 margin ile "Compounding AÇIK" ve "Compounding KAPALI" iki ayrı test çalıştır.
+Doğrulama: "AÇIK" testte, kârlı bir işlem sonrası bir sonraki işlemin pozisyon büyüklüğünün arttığını console.log kayıtları ile kanıtla. "KAPALI" testte ise pozisyon büyüklüğünün sabit kaldığını göster. Varsa, hatanın kök nedenini bul ve düzelt.
+Görev 1.3: Risk Yönetimi (Stop-Loss / Take-Profit) Denetimi:
+
+Bir test senaryosu oluştur. Stratejinin normal çıkış koşulundan (örn: RSI > 70) daha önce tetiklenecek kadar dar bir Zarar Durdur (örn: %1) ve geniş bir Kâr Al (örn: %20) ayarla.
+Testi çalıştır ve işlem kayıtlarında pozisyonun { type: 'STOP-LOSS', ... } olarak kapandığını doğrula.
+Tersi senaryoyu (dar Kâr Al, geniş Zarar Durdur) da test et ve { type: 'TAKE-PROFIT', ... } kaydını doğrula. Varsa, mantıksal hataları düzelt.
+Faz 2: Arayüz ve Kullanıcı Deneyimi (UI/UX) Evrimi
+Amaç: Platformun arayüzünü, modern, estetik ve son derece sezgisel bir yapıya kavuşturarak kullanıcı etkileşimini en üst düzeye çıkarmak.
+
+Görev 2.1: "On/Off Toggle Switch" Entegrasyonu:
+
+"Kârı İşleme Ekle" checkbox'ını, önceki yazışmamızda tarif edilen HTML/CSS kodlarını kullanarak modern bir "On/Off Toggle Switch" ile değiştir.
+Görev 2.2: Strateji Kartları Uygulaması:
+
+"Strateji Seçin" <select> kutusunu tamamen kaldır. Yerine, her strateji için adı, kısa açıklaması ve etiketleri olan interaktif "Strateji Kartları"nı, tarif edilen HTML/CSS/JS yapısıyla oluştur. Tıklanan kartın selected durumunu almasını sağla.
+Görev 2.3: Bağlama Duyarlı (Context-Aware) Arayüz:
+
+JavaScript tarafında toggleSettings fonksiyonunu güncelle.
+Kural: Eğer seçilen strateji kartı bir "Spot" stratejisi ise, Saatlik Fonlama, Kaldıraç, Margin Tipi, Margin Oranı gibi tüm kaldıraçlı işlem ayarlarını arayüzden tamamen gizle (display: none;).
+Faz 3: Gelişmiş Stratejik Yetenekler ve Görselleştirme
+Amaç: Kullanıcıya, başarılı trader'ların kullandığı metodolojileri test etme ve sonuçları en net şekilde görselleştirme imkanı sunarak platformu profesyonel bir analiz laboratuvarına dönüştürmek.
+
+Görev 3.1: Risk Yönetim Profilleri (Preset'ler):
+
+Arayüze, "Manuel Ayar", "Dengeli Büyüme (1:2 R:R)", "Agresif Fırsatçı (1:3 R:R)" gibi seçenekler içeren bir "Risk Yönetim Profili" <select> kutusu ekle.
+JS tarafında onchange olayını dinleyerek, seçilen profile göre Zarar Durdur ve Kâr Al input'larının davranışını yönet. "Manuel" değilse, Kâr Al input'u deaktif olmalı ve değeri, Zarar Durdur değerine göre otomatik hesaplanmalıdır.
+Görev 3.2: Lightweight Charts Entegrasyonu ve Bakiye Eğrisi:
+
+Lightweight Charts kütüphanesini CDN üzerinden projeye dahil et.
+Backtest sonucunda, her kapalı işlem sonrası bakiye verilerini bir diziye topla.
+Sonuçlar bölümünde, bu veriyi kullanarak her test sonucu için bir "Bakiye Eğrisi" (Equity Curve) grafiği çizdir.
+Görev 3.3: Fiyat Grafiği ve İşlem İşaretçileri:
+
+Aynı test sonucu için ikinci bir grafik alanı oluştur.
+Backtest'te kullanılan mum verilerini (klines) addCandlestickSeries ile bir mum grafiği olarak çizdir.
+İşlem kayıtlarını (trades) kullanarak, her alım ve satım noktasını arrowUp ve arrowDown şeklinde setMarkers metodu ile grafik üzerine işaretle.
+Nihai Teslimat:
+Tüm bu fazlar tamamlandığında, senden tek bir, temiz, içinde açıklayıcı yorumlar barındıran ve tüm bu özellikleri eksiksiz olarak barındıran bir index.html dosyası bekliyorum. Bu plan, vizyonumuzu gerçeğe dönüştürmek için nihai yol haritamızdır. Başarılar dilerim.
