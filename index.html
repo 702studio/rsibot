@@ -58,10 +58,12 @@
                 <div class="config-item"><label for="pair">Parite</label><select id="pair"><option value="BTCUSDT" selected>BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="XRPUSDT">XRP/USDT</option><option value="DOGEUSDT">DOGE/USDT</option><option value="RNDRUSDT">RNDR/USDT</option></select></div>
                 <div class="config-item"><label for="initialBalance">Başlangıç Bakiyesi (USD)</label><input type="number" id="initialBalance" value="10000"></div>
                 <div class="config-item"><label for="interval">Zaman Aralığı</label><select id="interval"><option value="1m">1 Dakika</option><option value="15m">15 Dakika</option><option value="30m">30 Dakika</option><option value="1h">1 Saat</option><option value="4h" selected>4 Saat</option><option value="1d">1 Gün</option></select></div>
+                <div class="config-item"><label for="direction">İşlem Yönü</label><select id="direction"><option value="long" selected>Sadece Long</option><option value="short">Sadece Short</option><option value="both">Her İkisi</option></select></div>
                 <div class="config-item full-width">
                     <label>Test Periyodu (seçmek için dokun veya tıkla, çift tık tek seçim)</label>
                     <div id="timeframe-chips" class="chip-container"></div>
                 </div>
+                <div id="strategy-settings" class="config-grid"></div>
             </div>
         </div>
         <div class="section">
@@ -70,6 +72,8 @@
                 <div class="config-item"><label for="commission">İşlem Komisyonu (%)</label><input type="number" id="commission" value="0.04" step="0.01"></div>
                 <div class="config-item"><label for="fundingRate">Saatlik Fonlama (%)</label><input type="number" id="fundingRate" value="0.00125" step="0.0001"></div>
                 <div class="config-item full-width"><label><input type="checkbox" id="compoundProfits" checked> Kârı İşleme Ekle</label></div>
+                    <div class="config-item"><label for="stopLossPercent">Zarar Durdur (%)</label><input type="number" id="stopLossPercent" value="0"></div>
+                    <div class="config-item"><label for="takeProfitPercent">Kâr Al (%)</label><input type="number" id="takeProfitPercent" value="0"></div>
                 <div id="leverage-settings" class="full-width config-grid" style="padding:0; border:none; background:none;">
                     <div class="config-item"><label for="marginType">Margin Tipi</label>
                         <select id="marginType">
@@ -96,8 +100,11 @@
     let allResultsHtml = "";
     let allResults = [];
     const defaultSettings = {
-        rsi_smart_leverage: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:'isolated', positionSize:25000 },
-        rsi_leveraged: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:'isolated' }
+        rsi_smart_leverage: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:"isolated", positionSize:25000 },
+        rsi_leveraged: { leverage:5, marginPercent:10, hourlyFundingRate:0.00125, marginType:"isolated" },
+        rsi_plus_spot: { rsiPeriod:14, rsiBuyLevel:30, emaPeriod:200 },
+        rsi_reversal: { rsiPeriod:14, rsiBuyLevel:30 },
+        ma_crossover: { shortPeriod:20, longPeriod:50 }
     };
 
     function initPeriodChips() {
@@ -132,6 +139,15 @@
         const strategy = document.getElementById('strategy').value;
         document.getElementById('leverage-settings').style.display = (strategy === 'rsi_leveraged') ? 'grid' : 'none';
         document.getElementById('smart-leverage-settings').style.display = (strategy === 'rsi_smart_leverage') ? 'grid' : 'none';
+        const container = document.getElementById("strategy-settings");
+        container.innerHTML = "";
+        if(strategy === "rsi_plus_spot"){
+            container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_plus_spot.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_plus_spot.rsiBuyLevel}"></div><div class="config-item"><label for="trendEmaPeriod">Trend EMA Periyodu</label><input type="number" id="trendEmaPeriod" value="${defaultSettings.rsi_plus_spot.emaPeriod}"></div>`;
+        } else if(strategy === "rsi_reversal"){
+            container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_reversal.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_reversal.rsiBuyLevel}"></div>`;
+        } else if(strategy === "ma_crossover"){
+            container.innerHTML = `<div class="config-item"><label for="shortPeriod">Kısa MA</label><input type="number" id="shortPeriod" value="${defaultSettings.ma_crossover.shortPeriod}"></div><div class="config-item"><label for="longPeriod">Uzun MA</label><input type="number" id="longPeriod" value="${defaultSettings.ma_crossover.longPeriod}"></div>`;
+        }
         if (defaultSettings[strategy]) {
             const d = defaultSettings[strategy];
             if (d.leverage !== undefined) document.getElementById('leverage').value = d.leverage;
@@ -229,135 +245,344 @@
     };
 
     const strategies = {
-        rsi_plus_spot: { name: "RSI+ (Trend Filtreli)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
-            const prices = klines.map(k => parseFloat(k[4]));
-            const rsi = calculateRSI(prices, 14);
-            const trendEma = calculateEMA(prices, 200);
-            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
-            for (let i = 200; i < klines.length; i++) {
-                if (prices[i] > trendEma[i] && rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) {
-                    const tradeBal = compound ? balance : initialBalance;
-                    const fee = tradeBal * (commissionRate / 100);
-                    totalFees += fee;
-                    cryptoAmount = (tradeBal - fee) / prices[i];
-                    if (compound) balance -= tradeBal;
-                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
-                    const sellValue = cryptoAmount * prices[i];
+        rsi_plus_spot: {
+            name: "RSI+ (Trend Filtreli)",
+            type: 'spot',
+            run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
+                const prices = klines.map(k => parseFloat(k[4]));
+                const rsiPeriod = params.rsiPeriod || 14;
+                const buyLevel = params.rsiBuyLevel || 30;
+                const emaPeriod = params.emaPeriod || 200;
+                const stopLossPercent = params.stopLossPercent || 0;
+                const takeProfitPercent = params.takeProfitPercent || 0;
+                const rsi = calculateRSI(prices, rsiPeriod);
+                const trendEma = calculateEMA(prices, emaPeriod);
+                let balance = initialBalance,
+                    cryptoAmount = 0,
+                    entryPrice = 0,
+                    trades = [],
+                    totalFees = 0,
+                    totalProfit = 0;
+                for (let i = Math.max(rsiPeriod, emaPeriod); i < klines.length; i++) {
+                    const high = parseFloat(klines[i][2]);
+                    const low = parseFloat(klines[i][3]);
+                    if (cryptoAmount > 0) {
+                        const sl = entryPrice * (1 - stopLossPercent / 100);
+                        const tp = entryPrice * (1 + takeProfitPercent / 100);
+                        if (stopLossPercent > 0 && low <= sl) {
+                            const sellValue = cryptoAmount * sl;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
+                        if (takeProfitPercent > 0 && high >= tp) {
+                            const sellValue = cryptoAmount * tp;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
+                    }
+                    if (prices[i] > trendEma[i] && rsi[i-1] > buyLevel && rsi[i] <= buyLevel && cryptoAmount === 0) {
+                        const tradeBal = compound ? balance : initialBalance;
+                        const fee = tradeBal * (commissionRate / 100);
+                        totalFees += fee;
+                        cryptoAmount = (tradeBal - fee) / prices[i];
+                        entryPrice = prices[i];
+                        if (compound) balance -= tradeBal;
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
+                        const sellValue = cryptoAmount * prices[i];
+                        const fee = sellValue * (commissionRate / 100);
+                        totalFees += fee;
+                        const result = sellValue - fee;
+                        if (compound) balance += result; else totalProfit += result - initialBalance;
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        cryptoAmount = 0;
+                        if (!compound) balance = initialBalance;
+                    }
+                }
+                if (cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[prices.length - 1];
                     const fee = sellValue * (commissionRate / 100);
                     totalFees += fee;
                     const result = sellValue - fee;
-                    if (compound) {
-                        balance += result;
-                    } else {
-                        totalProfit += result - initialBalance;
+                    if (compound) balance += result; else totalProfit += result - initialBalance;
+                }
+                const finalBalance = compound ? balance : initialBalance + totalProfit;
+                return { finalBalance, trades, totalFees, liquidationCount: 0 };
+            }
+        },
+        rsi_reversal: {
+            name: "RSI Geri Dönüşü (Spot)",
+            type: 'spot',
+            run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
+                const prices = klines.map(k => parseFloat(k[4]));
+                const rsiPeriod = params.rsiPeriod || 14;
+                const buyLevel = params.rsiBuyLevel || 30;
+                const stopLossPercent = params.stopLossPercent || 0;
+                const takeProfitPercent = params.takeProfitPercent || 0;
+                const rsi = calculateRSI(prices, rsiPeriod);
+                let balance = initialBalance,
+                    cryptoAmount = 0,
+                    entryPrice = 0,
+                    trades = [],
+                    totalFees = 0,
+                    totalProfit = 0;
+                for (let i = rsiPeriod; i < klines.length; i++) {
+                    const high = parseFloat(klines[i][2]);
+                    const low = parseFloat(klines[i][3]);
+                    if (cryptoAmount > 0) {
+                        const sl = entryPrice * (1 - stopLossPercent / 100);
+                        const tp = entryPrice * (1 + takeProfitPercent / 100);
+                        if (stopLossPercent > 0 && low <= sl) {
+                            const sellValue = cryptoAmount * sl;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
+                        if (takeProfitPercent > 0 && high >= tp) {
+                            const sellValue = cryptoAmount * tp;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
                     }
-                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                    cryptoAmount = 0;
-                    if (!compound) balance = initialBalance;
+                    if (rsi[i-1] > buyLevel && rsi[i] <= buyLevel && cryptoAmount === 0) {
+                        const tradeBal = compound ? balance : initialBalance;
+                        const fee = tradeBal * (commissionRate / 100);
+                        totalFees += fee;
+                        cryptoAmount = (tradeBal - fee) / prices[i];
+                        entryPrice = prices[i];
+                        if (compound) balance -= tradeBal;
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
+                        const sellValue = cryptoAmount * prices[i];
+                        const fee = sellValue * (commissionRate / 100);
+                        totalFees += fee;
+                        const result = sellValue - fee;
+                        if (compound) balance += result; else totalProfit += result - initialBalance;
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        cryptoAmount = 0;
+                        if (!compound) balance = initialBalance;
+                    }
                 }
-            }
-            if (cryptoAmount > 0) {
-                const sellValue = cryptoAmount * prices[prices.length - 1];
-                const fee = sellValue * (commissionRate / 100);
-                totalFees += fee;
-                const result = sellValue - fee;
-                if (compound) {
-                    balance += result;
-                } else {
-                    totalProfit += result - initialBalance;
-                }
-            }
-            const finalBalance = compound ? balance : initialBalance + totalProfit;
-            return { finalBalance, trades, totalFees, liquidationCount: 0 };
-        }},
-        rsi_reversal: { name: "RSI Geri Dönüşü (Spot)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
-            const prices = klines.map(k => parseFloat(k[4]));
-            const rsi = calculateRSI(prices, 14);
-            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
-            for (let i = 14; i < klines.length; i++) {
-                if (rsi[i-1] > 30 && rsi[i] <= 30 && cryptoAmount === 0) {
-                    const tradeBal = compound ? balance : initialBalance;
-                    const fee = tradeBal * (commissionRate / 100);
-                    totalFees += fee;
-                    cryptoAmount = (tradeBal - fee) / prices[i];
-                    if (compound) balance -= tradeBal;
-                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                } else if (rsi[i-1] < 70 && rsi[i] >= 70 && cryptoAmount > 0) {
-                    const sellValue = cryptoAmount * prices[i];
+                if (cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[prices.length - 1];
                     const fee = sellValue * (commissionRate / 100);
                     totalFees += fee;
                     const result = sellValue - fee;
-                    if (compound) {
-                        balance += result;
-                    } else {
-                        totalProfit += result - initialBalance;
+                    if (compound) balance += result; else totalProfit += result - initialBalance;
+                }
+                const finalBalance = compound ? balance : initialBalance + totalProfit;
+                return { finalBalance, trades, totalFees, liquidationCount: 0 };
+            }
+        },
+        ma_crossover: {
+            name: "MA Kesişimi (Spot Trend)",
+            type: 'spot',
+            run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
+                const prices = klines.map(k => parseFloat(k[4]));
+                const shortPeriod = params.shortPeriod || 20;
+                const longPeriod = params.longPeriod || 50;
+                const stopLossPercent = params.stopLossPercent || 0;
+                const takeProfitPercent = params.takeProfitPercent || 0;
+                const smaShort = calculateSMA(prices, shortPeriod);
+                const smaLong = calculateSMA(prices, longPeriod);
+                let balance = initialBalance,
+                    cryptoAmount = 0,
+                    entryPrice = 0,
+                    trades = [],
+                    totalFees = 0,
+                    totalProfit = 0;
+                for (let i = longPeriod; i < klines.length; i++) {
+                    const high = parseFloat(klines[i][2]);
+                    const low = parseFloat(klines[i][3]);
+                    if (cryptoAmount > 0) {
+                        const sl = entryPrice * (1 - stopLossPercent / 100);
+                        const tp = entryPrice * (1 + takeProfitPercent / 100);
+                        if (stopLossPercent > 0 && low <= sl) {
+                            const sellValue = cryptoAmount * sl;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'STOP-LOSS', price: sl, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
+                        if (takeProfitPercent > 0 && high >= tp) {
+                            const sellValue = cryptoAmount * tp;
+                            const fee = sellValue * (commissionRate / 100);
+                            totalFees += fee;
+                            const result = sellValue - fee;
+                            if (compound) balance += result; else totalProfit += result - initialBalance;
+                            trades.push({ type: 'TAKE-PROFIT', price: tp, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            cryptoAmount = 0;
+                            if (!compound) balance = initialBalance;
+                            continue;
+                        }
                     }
-                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                    cryptoAmount = 0;
-                    if (!compound) balance = initialBalance;
+                    if (smaShort[i-1] < smaLong[i-1] && smaShort[i] > smaLong[i] && cryptoAmount === 0) {
+                        const tradeBal = compound ? balance : initialBalance;
+                        const fee = tradeBal * (commissionRate / 100);
+                        totalFees += fee;
+                        cryptoAmount = (tradeBal - fee) / prices[i];
+                        entryPrice = prices[i];
+                        if (compound) balance -= tradeBal;
+                        trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                    } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && cryptoAmount > 0) {
+                        const sellValue = cryptoAmount * prices[i];
+                        const fee = sellValue * (commissionRate / 100);
+                        totalFees += fee;
+                        const result = sellValue - fee;
+                        if (compound) balance += result; else totalProfit += result - initialBalance;
+                        trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                        cryptoAmount = 0;
+                        if (!compound) balance = initialBalance;
+                    }
                 }
-            }
-            if (cryptoAmount > 0) {
-                const sellValue = cryptoAmount * prices[prices.length - 1];
-                const fee = sellValue * (commissionRate / 100);
-                totalFees += fee;
-                const result = sellValue - fee;
-                if (compound) {
-                    balance += result;
-                } else {
-                    totalProfit += result - initialBalance;
-                }
-            }
-            const finalBalance = compound ? balance : initialBalance + totalProfit;
-            return { finalBalance, trades, totalFees, liquidationCount: 0 };
-        }},
-        ma_crossover: { name: "MA Kesişimi (Spot Trend)", type: 'spot', run: function(klines, initialBalance, commissionRate, compound = true) {
-            const prices = klines.map(k => parseFloat(k[4]));
-            const smaShort = calculateSMA(prices, 20);
-            const smaLong = calculateSMA(prices, 50);
-            let balance = initialBalance, cryptoAmount = 0, trades = [], totalFees = 0, totalProfit = 0;
-            for (let i = 50; i < klines.length; i++) {
-                if (smaShort[i-1] < smaLong[i-1] && smaShort[i] > smaLong[i] && cryptoAmount === 0) {
-                    const tradeBal = compound ? balance : initialBalance;
-                    const fee = tradeBal * (commissionRate / 100);
-                    totalFees += fee;
-                    cryptoAmount = (tradeBal - fee) / prices[i];
-                    if (compound) balance -= tradeBal;
-                    trades.push({ type: 'BUY', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                } else if (smaShort[i-1] > smaLong[i-1] && smaShort[i] < smaLong[i] && cryptoAmount > 0) {
-                    const sellValue = cryptoAmount * prices[i];
+                if (cryptoAmount > 0) {
+                    const sellValue = cryptoAmount * prices[prices.length - 1];
                     const fee = sellValue * (commissionRate / 100);
                     totalFees += fee;
                     const result = sellValue - fee;
-                    if (compound) {
-                        balance += result;
-                    } else {
-                        totalProfit += result - initialBalance;
+                    if (compound) balance += result; else totalProfit += result - initialBalance;
+                }
+                const finalBalance = compound ? balance : initialBalance + totalProfit;
+                return { finalBalance, trades, totalFees, liquidationCount: 0 };
+            }
+        },
+        rsi_leveraged: {
+            name: "RSI Kaldıraçlı (Standart)",
+            type: 'leveraged',
+            run: function(klines, initialBalance, settings) {
+                const { leverage, marginPercent, commissionRate, hourlyFundingRate, marginType, compound, stopLossPercent, takeProfitPercent, direction } = settings;
+                const prices = klines.map(k => parseFloat(k[4]));
+                const rsi = calculateRSI(prices, 14);
+                const intervalMap = { '1m': 1/60, '15m': 0.25, '30m': 0.5, '1h':1, '4h':4, '1d':24 };
+                const intervalHours = intervalMap[document.getElementById('interval').value] || 4;
+                let balance = initialBalance,
+                    inPosition = false,
+                    positionSizeUsd = 0,
+                    marginUsed = 0,
+                    entryPrice = 0,
+                    side = 'long',
+                    trades = [],
+                    totalFees = 0,
+                    liquidationCount = 0;
+                for (let i = 14; i < klines.length; i++) {
+                    const currentPrice = prices[i];
+                    const candleHigh = parseFloat(klines[i][2]);
+                    const candleLow = parseFloat(klines[i][3]);
+                    if (inPosition) {
+                        const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours;
+                        balance -= fundingFee;
+                        totalFees += fundingFee;
+                        const sl = side === 'long' ? entryPrice * (1 - stopLossPercent/100) : entryPrice * (1 + stopLossPercent/100);
+                        const tp = side === 'long' ? entryPrice * (1 + takeProfitPercent/100) : entryPrice * (1 - takeProfitPercent/100);
+                        if (stopLossPercent>0 && ((side==='long' && candleLow<=sl) || (side==='short' && candleHigh>=sl))) {
+                            const exitPrice = sl;
+                            const exitValue = (positionSizeUsd / entryPrice) * exitPrice;
+                            const fee = exitValue * (commissionRate / 100);
+                            balance -= fee;
+                            totalFees += fee;
+                            const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
+                            balance += pnl;
+                            trades.push({ type: 'STOP-LOSS', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            inPosition = false;
+                            continue;
+                        }
+                        if (takeProfitPercent>0 && ((side==='long' && candleHigh>=tp) || (side==='short' && candleLow<=tp))) {
+                            const exitPrice = tp;
+                            const exitValue = (positionSizeUsd / entryPrice) * exitPrice;
+                            const fee = exitValue * (commissionRate / 100);
+                            balance -= fee;
+                            totalFees += fee;
+                            const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
+                            balance += pnl;
+                            trades.push({ type: 'TAKE-PROFIT', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            inPosition = false;
+                            continue;
+                        }
+                        if (side==='long' && rsi[i-1] < 70 && rsi[i] >= 70) {
+                            const exitValue = (positionSizeUsd / entryPrice) * currentPrice;
+                            const fee = exitValue * (commissionRate / 100);
+                            balance -= fee; totalFees += fee;
+                            const pnl = exitValue - positionSizeUsd;
+                            balance += pnl;
+                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            inPosition = false;
+                            continue;
+                        }
+                        if (side==='short' && rsi[i-1] > 30 && rsi[i] <= 30) {
+                            const exitValue = (positionSizeUsd / entryPrice) * currentPrice;
+                            const fee = exitValue * (commissionRate / 100);
+                            balance -= fee; totalFees += fee;
+                            const pnl = positionSizeUsd - exitValue;
+                            balance += pnl;
+                            trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            inPosition = false;
+                            continue;
+                        }
                     }
-                    trades.push({ type: 'SELL', price: prices[i], time: new Date(klines[i][0]).toLocaleString('tr-TR') });
-                    cryptoAmount = 0;
-                    if (!compound) balance = initialBalance;
+                    if (!inPosition) {
+                        const baseBal = compound ? balance : initialBalance;
+                        marginUsed = baseBal * (marginPercent / 100);
+                        if (baseBal <= 0 || baseBal < marginUsed) continue;
+                        positionSizeUsd = marginUsed * leverage;
+                        const fee = positionSizeUsd * (commissionRate / 100);
+                        balance -= fee;
+                        totalFees += fee;
+                        entryPrice = currentPrice;
+                        side = null;
+                        if ((direction !== 'short') && rsi[i-1] > 30 && rsi[i] <= 30) {
+                            side = 'long';
+                        } else if ((direction !== 'long') && rsi[i-1] < 70 && rsi[i] >= 70) {
+                            side = 'short';
+                        }
+                        if (side) {
+                            trades.push({ type: side === 'long' ? 'LONG' : 'SHORT', price: entryPrice, size: positionSizeUsd, leverage, time: new Date(klines[i][0]).toLocaleString('tr-TR') });
+                            inPosition = true;
+                        } else {
+                            balance += fee;
+                            totalFees -= fee;
+                        }
+                    }
                 }
-            }
-            if (cryptoAmount > 0) {
-                const sellValue = cryptoAmount * prices[prices.length - 1];
-                const fee = sellValue * (commissionRate / 100);
-                totalFees += fee;
-                const result = sellValue - fee;
-                if (compound) {
-                    balance += result;
-                } else {
-                    totalProfit += result - initialBalance;
+                if (inPosition) {
+                    const exitPrice = prices[prices.length - 1];
+                    const exitValue = (positionSizeUsd / entryPrice) * exitPrice;
+                    const fee = exitValue * (commissionRate / 100);
+                    balance -= fee; totalFees += fee;
+                    const pnl = side==='long'? exitValue - positionSizeUsd : positionSizeUsd - exitValue;
+                    balance += pnl;
+                    trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' });
                 }
+                return { finalBalance: balance, trades, totalFees, liquidationCount };
             }
-            const finalBalance = compound ? balance : initialBalance + totalProfit;
-            return { finalBalance, trades, totalFees, liquidationCount: 0 };
-        }},
-        rsi_smart_leverage: { name: "Akıllı Kaldıraç RSI", type: 'leveraged', run: function(klines, initialBalance, settings) { const { positionSize, commissionRate, hourlyFundingRate, compound } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = positionSize, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { const pnl = -marginUsed; totalBalance += pnl; liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { const baseBal = compound ? totalBalance : initialBalance; marginUsed = baseBal; positionSizeUsd = compound ? positionSize * (baseBal / initialBalance) : positionSize; const leverage = positionSizeUsd / marginUsed; if (baseBal <= 0 || leverage < 1) continue; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, leverage: leverage.toFixed(2), time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }},
-        rsi_leveraged: { name: "RSI Kaldıraçlı (Standart)", type: 'leveraged', run: function(klines, initialBalance, settings) { const { leverage, marginPercent, commissionRate, hourlyFundingRate, marginType, compound } = settings; const prices = klines.map(k => parseFloat(k[4])); const rsi = calculateRSI(prices, 14); const intervalHours = {'1h':1, '4h':4, '1d':24}[document.getElementById('interval').value] || 4; let totalBalance = initialBalance, inPosition = false, totalFees = 0, liquidationCount = 0; let entryPrice = 0, positionSizeUsd = 0, marginUsed = 0, liquidationPrice = 0; let trades = []; for (let i = 14; i < klines.length; i++) { const currentPrice = prices[i]; const candleLow = parseFloat(klines[i][3]); if (inPosition) { const fundingFee = positionSizeUsd * (hourlyFundingRate / 100) * intervalHours; totalBalance -= fundingFee; totalFees += fundingFee; if (candleLow <= liquidationPrice) { let pnl = -marginUsed; if (marginType === 'cross') { pnl = -totalBalance; totalBalance = 0; } else { totalBalance += pnl; } liquidationCount++; trades.push({ type: 'LIQUIDATION', price: liquidationPrice, pnl, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; if (marginType === 'cross') break; continue; } } if (rsi[i-1] > 30 && rsi[i] <= 30 && !inPosition) { const baseBal = compound ? totalBalance : initialBalance; marginUsed = baseBal * (marginPercent / 100); if (baseBal <= 0 || baseBal < marginUsed) continue; positionSizeUsd = marginUsed * leverage; const fee = positionSizeUsd * (commissionRate / 100); totalBalance -= fee; totalFees += fee; entryPrice = currentPrice; liquidationPrice = entryPrice * (1 - (1 / leverage)); inPosition = true; trades.push({ type: 'LONG', price: entryPrice, size: positionSizeUsd, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); } else if (rsi[i-1] < 70 && rsi[i] >= 70 && inPosition) { const exitValue = (positionSizeUsd / entryPrice) * currentPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: currentPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: new Date(klines[i][0]).toLocaleString('tr-TR') }); inPosition = false; } } if (inPosition) { const exitPrice = prices[prices.length - 1]; const exitValue = (positionSizeUsd / entryPrice) * exitPrice; const fee = exitValue * (commissionRate / 100); totalBalance -= fee; totalFees += fee; const pnl = exitValue - positionSizeUsd; totalBalance += pnl; trades.push({ type: 'CLOSE', price: exitPrice, pnl, pnl_percent: (pnl / marginUsed) * 100, time: 'Test Sonu' }); } return { finalBalance: totalBalance, trades, totalFees, liquidationCount }; }}
+        }
     };
-
     window.runBacktest = async function() {
         document.getElementById('runBtn').disabled = true;
         document.getElementById('downloadBtn').style.display = 'none';
@@ -379,13 +604,50 @@
                 updateProgress(50, `Strateji yürütülüyor: ${daysToTest} günlük periyot...`);
                 let result;
                 const compound = document.getElementById('compoundProfits').checked;
+                const sl = parseFloat(document.getElementById('stopLossPercent').value);
+                const tp = parseFloat(document.getElementById('takeProfitPercent').value);
+                const direction = document.getElementById('direction').value;
                 if (selectedStrategy.type.includes('leveraged')) {
-                    const settings = { leverage: parseFloat(document.getElementById('leverage').value), marginPercent: parseFloat(document.getElementById('marginPercent').value), hourlyFundingRate: parseFloat(document.getElementById('fundingRate').value), marginType: document.getElementById('marginType').value, commissionRate, positionSize: parseFloat(document.getElementById('positionSize').value), compound };
+                    const settings = {
+                        leverage: parseFloat(document.getElementById('leverage').value),
+                        marginPercent: parseFloat(document.getElementById('marginPercent').value),
+                        hourlyFundingRate: parseFloat(document.getElementById('fundingRate').value),
+                        marginType: document.getElementById('marginType').value,
+                        commissionRate,
+                        positionSize: parseFloat(document.getElementById('positionSize').value),
+                        compound,
+                        stopLossPercent: sl,
+                        takeProfitPercent: tp,
+                        direction
+                    };
                     result = selectedStrategy.run(klines, initialBalance, settings);
                 } else {
-                    result = selectedStrategy.run(klines, initialBalance, commissionRate, compound);
+                    const params = {
+                        stopLossPercent: sl,
+                        takeProfitPercent: tp,
+                        rsiPeriod: document.getElementById('rsiPeriod') ? parseInt(document.getElementById('rsiPeriod').value) : undefined,
+                        rsiBuyLevel: document.getElementById('rsiBuyLevel') ? parseFloat(document.getElementById('rsiBuyLevel').value) : undefined,
+                        emaPeriod: document.getElementById('trendEmaPeriod') ? parseInt(document.getElementById('trendEmaPeriod').value) : undefined,
+                        shortPeriod: document.getElementById('shortPeriod') ? parseInt(document.getElementById('shortPeriod').value) : undefined,
+                        longPeriod: document.getElementById('longPeriod') ? parseInt(document.getElementById('longPeriod').value) : undefined
+                    };
+                    result = selectedStrategy.run(klines, initialBalance, commissionRate, compound, params);
                 }
-                const params = { strategy: strategyKey, pair, interval, days: daysToTest, commission: commissionRate, leverage: selectedStrategy.type.includes('leveraged') ? document.getElementById('leverage').value : null, marginPercent: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginPercent').value : null, fundingRate: selectedStrategy.type.includes('leveraged') ? document.getElementById('fundingRate').value : null, marginType: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginType').value : null, positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null };
+                const params = {
+                    strategy: strategyKey,
+                    pair,
+                    interval,
+                    days: daysToTest,
+                    commission: commissionRate,
+                    leverage: selectedStrategy.type.includes('leveraged') ? document.getElementById('leverage').value : null,
+                    marginPercent: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginPercent').value : null,
+                    fundingRate: selectedStrategy.type.includes('leveraged') ? document.getElementById('fundingRate').value : null,
+                    marginType: selectedStrategy.type.includes('leveraged') ? document.getElementById('marginType').value : null,
+                    positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null,
+                    stopLossPercent: sl,
+                    takeProfitPercent: tp,
+                    direction
+                };
                 allResults.push({ ...result, initialBalance, params });
             }
             updateProgress(100, "Rapor oluşturuluyor...");
@@ -412,7 +674,7 @@
             if (params.days >= 365) periodText = `${Math.round(params.days/365)} Yıl`; else if (params.days >= 30) periodText = `${Math.round(params.days/30)} Ay`; else if (params.days >= 7) periodText = `${params.days} Gün`; else periodText = `${params.days} Gün`;
             let winCount = 0, totalProfit = 0, totalLoss = 0, tradeCount = 0;
             if(params.leverage || params.positionSize) {
-                trades.forEach(trade => { if(trade.type === 'CLOSE' || trade.type === 'LIQUIDATION') { tradeCount++; if(trade.pnl > 0) { winCount++; totalProfit += trade.pnl; } else { totalLoss += Math.abs(trade.pnl); } } });
+                trades.forEach(trade => { if(trade.type === 'CLOSE' || trade.type === 'LIQUIDATION' || trade.type === 'STOP-LOSS' || trade.type === 'TAKE-PROFIT') { tradeCount++; if(trade.pnl > 0) { winCount++; totalProfit += trade.pnl; } else { totalLoss += Math.abs(trade.pnl); } } });
             } else {
                 tradeCount = Math.floor(trades.length / 2); let lastBuyPrice = 0;
                 for (let i = 0; i < trades.length; i+=2) { if (trades[i] && trades[i+1]) { const pnl = (trades[i+1].price - trades[i].price); if (pnl > 0) { winCount++; totalProfit += pnl; } else { totalLoss += Math.abs(pnl); } } }
@@ -433,6 +695,7 @@
             trades.forEach((trade, i) => {
                 if (trade.type === 'LONG') { htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="profit">LONG</span> @ ${trade.price.toFixed(4)} | Poz. Büyüklüğü: ${trade.size.toFixed(2)}$ ${trade.leverage ? `(${trade.leverage}x)` : ''} (${trade.time})</p>`; } 
                 else if (trade.type === 'CLOSE') { const pnlCls = trade.pnl >= 0 ? 'profit' : 'loss'; htmlReport += `<p>&nbsp;&nbsp;<span class="${pnlCls}">CLOSE</span> @ ${trade.price.toFixed(4)} | K/Z: ${trade.pnl.toFixed(2)}$ (%${trade.pnl_percent.toFixed(2)}) (${trade.time})</p>`; } 
+                else if (trade.type === 'STOP-LOSS' || trade.type === 'TAKE-PROFIT') { const cls = trade.type === 'STOP-LOSS' ? "loss" : "profit"; htmlReport += `<p>&nbsp;&nbsp;<span class="${cls}">${trade.type}</span> @ ${trade.price.toFixed(4)} | K/Z: ${trade.pnl.toFixed(2)}$ (%${trade.pnl_percent.toFixed(2)}) (${trade.time})</p>`; }
                 else if (trade.type === 'LIQUIDATION') { htmlReport += `<p>&nbsp;&nbsp;<span class="loss">LİKİDASYON</span> @ ${trade.price.toFixed(4)} | Kayıp: ${Math.abs(trade.pnl).toFixed(2)}$ (${trade.time})</p>`; } 
                 else { const typeClass = trade.type === 'BUY' ? 'profit' : 'loss'; htmlReport += `<p>[${Math.floor(i/2)+1}] <span class="${typeClass}">${trade.type}</span> @ ${trade.price.toFixed(4)} USD (${trade.time})</p>`; }
             });
