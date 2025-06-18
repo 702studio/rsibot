@@ -74,7 +74,12 @@
                                 });
                                 markers.forEach(m=>{
                                     const x=(m.time-minX)/(maxX-minX)*w;
-                                    const y=m.position==='below'?h:0;
+                                    let y;
+                                    if(typeof m.price==='number'){
+                                        y=h-(m.price-minY)/(maxY-minY)*h;
+                                    }else{
+                                        y=m.position==='below'?h:m.position==='inBar'?h/2:0;
+                                    }
                                     ctx.fillStyle=m.color||'#ff0';
                                     ctx.beginPath();
                                     ctx.moveTo(x,y);
@@ -1178,7 +1183,7 @@ window.applyRiskProfile = function() {
         const lastTime = candles[candles.length - 1]?.time || Math.floor(Date.now()/1000);
         const markers = trades.map(t => {
             const tUnix = t.time === "Test Sonu" ? lastTime : Math.floor(new Date(t.time).getTime()/1000);
-            return { time: tUnix, position:(t.type=="BUY"||t.type=="LONG")?"below":"above", color:(t.type=="BUY"||t.type=="LONG")?"#0f0":"#f00", shape:(t.type=="BUY"||t.type=="LONG")?"arrowUp":"arrowDown", text:t.type };
+            return { time: tUnix, price: +t.price, position:(t.type=="BUY"||t.type=="LONG")?"below":"above", color:(t.type=="BUY"||t.type=="LONG")?"#0f0":"#f00", shape:(t.type=="BUY"||t.type=="LONG")?"arrowUp":"arrowDown", text:t.type };
         });
         candleSeries.setMarkers(markers);
         eqDiv.addEventListener("dblclick", () => eqDiv.classList.toggle('zoomed'));
