@@ -126,7 +126,7 @@
         .toggle .slider:before { position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background-color:white;transition:.4s;border-radius:50%; }
         .toggle input:checked + .slider { background-color:var(--primary-color); }
         .toggle input:checked + .slider:before { transform:translateX(20px); }
-        .chart-container { height:300px;margin-bottom:20px;width:100%;cursor:zoom-in; }
+        .chart-container { height:300px;margin-bottom:20px;width:100%;cursor:pointer; }
         .chart-container.zoomed { height:500px; cursor:zoom-out; }
         optgroup { font-style:italic;background-color:#252525;color:var(--label-color); }
         #leverage-settings, #smart-leverage-settings { display:none; }
@@ -147,6 +147,11 @@
         .report-dl strong { font-size:1.2em; } .log-container { font-size:12px; max-height:300px; overflow-y:auto; } .log-container p { margin:4px 0; }
         .profit { color:var(--profit-color); } .loss { color:var(--loss-color); }
         .strategy-param-group{display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;}
+        ::-webkit-scrollbar { width:8px; height:8px; }
+        ::-webkit-scrollbar-track { background: var(--surface-color); }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+        .best-result { border:1px solid var(--profit-color); box-shadow:0 0 15px rgba(0,255,157,0.15); }
         @media (max-width:600px){
             .chart-container{height:200px;}
             .chart-container.zoomed{height:350px;}
@@ -154,9 +159,15 @@
             select,input,button{font-size:13px;padding:8px;}
             .config-grid{grid-template-columns:1fr;gap:10px;}
             .strategy-param-group{grid-template-columns:1fr;}
+        ::-webkit-scrollbar { width:8px; height:8px; }
+        ::-webkit-scrollbar-track { background: var(--surface-color); }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius:4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+        .best-result { border:1px solid var(--profit-color); box-shadow:0 0 15px rgba(0,255,157,0.15); }
             .strategy-card{flex:1 0 calc(50% - 10px);font-size:12px;}
             .action-buttons button{font-size:14px;padding:10px;}
             h1{font-size:1.2em;}
+            .report-dl{grid-template-columns:1fr 1fr;gap:8px 15px;}
         }
     </style>
 </head>
@@ -229,7 +240,7 @@
                 </div>
             </div>
         </div>
-        <div class="action-buttons"><button id="runBtn" onclick="runBacktest()" data-i18n="run_backtest">Backtest'i Başlat</button><button id="downloadBtn" onclick="generateAndDownloadHtmlReport()" style="display:none;" data-i18n="download_report">Raporu İndir</button></div>
+        <div class="action-buttons"><button id="runBtn" onclick="runBacktest()" data-i18n="run_backtest">Backtest'i Başlat</button><button id="downloadBtn" onclick="generateAndDownloadHtmlReport()" style="display:none;" data-i18n="download_report">Raporu İndir</button><button id="shareBtn" onclick="shareConfig()" data-i18n="share_link" style="display:none;">Paylaş</button></div>
         <div id="progress-container"></div>
         <div id="results"></div>
     </div>
@@ -254,7 +265,8 @@
             general_settings: "Genel Ayarlar",
             cost_settings: "Maliyet & Kaldıraç Ayarları",
             run_backtest: "Backtest'i Başlat",
-            download_report: "Raporu İndir"
+            download_report: "Raporu İndir",
+            share_link: "Paylaşım Linki",
         },
         en: {
             app_title: "Ultimate Backtest Platform",
@@ -262,6 +274,7 @@
             general_settings: "General Settings",
             cost_settings: "Cost & Leverage Settings",
             run_backtest: "Run Backtest",
+            share_link: "Share Link",
             download_report: "Download Report"
         }
     };
@@ -1123,9 +1136,12 @@ window.applyRiskProfile = function() {
         const resultsDiv = document.getElementById('results');
         allResultsHtml = "";
         const chartJobs = [];
+        let bestIdx = -1;
+        let bestNet = -Infinity;
         allResults.forEach((result,idx) => {
             const { finalBalance, initialBalance, trades, totalFees, liquidationCount, params } = result;
             const grossPnl = finalBalance - initialBalance + totalFees;
+            if(netPnl > bestNet){ bestNet = netPnl; bestIdx = idx; }
             const netPnl = finalBalance - initialBalance;
             const pnlClass = netPnl >= 0 ? 'profit' : 'loss'; const pnlSign = netPnl >= 0 ? '+' : '';
             const strategyName = strategies[params.strategy].name;
@@ -1166,24 +1182,25 @@ window.applyRiskProfile = function() {
         });
         resultsDiv.innerHTML = allResultsHtml;
         resultsDiv.style.display = 'block';
+        if(bestIdx>=0){ const el=document.getElementById("section-"+bestIdx); if(el) el.classList.add("best-result"); }
         chartJobs.forEach(job=>renderCharts(job.equity, job.klines, job.trades, job.eqId, job.prId));
         document.getElementById('progress-container').style.display = 'none';
-        if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex';
+        if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex'; document.getElementById('shareBtn').style.display = 'flex';
     };
     function renderCharts(equity, klines, trades, eqId, prId){
         const eqDiv=document.getElementById(eqId);
         const prDiv=document.getElementById(prId);
         eqDiv.innerHTML=""; prDiv.innerHTML="";
-        const ec=LightweightCharts.createChart(eqDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
+        const ec=LightweightCharts.createChart(eqDiv,{height:300,handleScroll:true,handleScale:true,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
         ec.addLineSeries({color:"#ffcc33"}).setData(equity);
-        const pc=LightweightCharts.createChart(prDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
+        const pc=LightweightCharts.createChart(prDiv,{height:300,handleScroll:true,handleScale:true,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
         const candleSeries=pc.addCandlestickSeries();
         const candles = klines.map(k => ({ time: Math.floor(k[0]/1000), open:+k[1], high:+k[2], low:+k[3], close:+k[4] }));
         candleSeries.setData(candles);
         const lastTime = candles[candles.length - 1]?.time || Math.floor(Date.now()/1000);
         const markers = trades.map(t => {
             const tUnix = t.time === "Test Sonu" ? lastTime : Math.floor(new Date(t.time).getTime()/1000);
-            return { time: tUnix, price: +t.price, position:(t.type=="BUY"||t.type=="LONG")?"below":"above", color:(t.type=="BUY"||t.type=="LONG")?"#0f0":"#f00", shape:(t.type=="BUY"||t.type=="LONG")?"arrowUp":"arrowDown", text:t.type };
+            return { time: tUnix, price: +t.price, position:(t.type=="BUY"||t.type=="LONG")?"belowBar":"aboveBar", color:(t.type=="BUY"||t.type=="LONG")?"#0f0":"#f00", shape:(t.type=="BUY"||t.type=="LONG")?"arrowUp":"arrowDown", text:t.type+" @ "+t.price.toFixed(2) };
         });
         candleSeries.setMarkers(markers);
         eqDiv.addEventListener("dblclick", () => eqDiv.classList.toggle('zoomed'));
@@ -1199,6 +1216,23 @@ window.applyRiskProfile = function() {
         const a = document.createElement('a'); a.href = url; a.download = `pro_backtest_raporu.html`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     };
+    window.shareConfig = function(){
+        const p=new URLSearchParams();
+        p.set("pair",document.getElementById("pair").value);
+        p.set("interval",document.getElementById("interval").value);
+        p.set("strategy",document.getElementById("strategy").value);
+        const days=Array.from(document.querySelectorAll(".period-chip.selected")).map(c=>c.dataset.days).join(",");
+        p.set("days",days);
+        const url=location.origin+location.pathname+"?"+p.toString();
+        navigator.clipboard.writeText(url).then(()=>alert('Link kopyalandı'));
+    };
+    function loadConfigFromUrl(){
+        const q=new URLSearchParams(location.search);
+        if(q.has("pair")) document.getElementById("pair").value=q.get("pair");
+        if(q.has("interval")) document.getElementById("interval").value=q.get("interval");
+        if(q.has("strategy")){document.getElementById("strategy").value=q.get("strategy");}
+        if(q.has("days")){const set=q.get("days").split(",");document.querySelectorAll(".period-chip").forEach(c=>c.classList.toggle("selected",set.includes(c.dataset.days)));}
+    }
 
     window.onload = function(){
         const lang = localStorage.getItem('lang') || 'en';
@@ -1206,6 +1240,7 @@ window.applyRiskProfile = function() {
         initPeriodChips();
         initStrategyCards();
         applyRiskProfile();
+        loadConfigFromUrl();
         document.getElementById("stopLossPercent").addEventListener("input", applyRiskProfile);
         toggleSettings();
     };
