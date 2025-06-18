@@ -12,6 +12,8 @@
         :root {--bg-color:#101214;--surface-color:#1b1d1f;--primary-color:#ffcc33;--primary-hover:#e0a021;--text-color:#e0e0e0;--label-color:#bbb;--border-color:#333;--profit-color:#00ff9d;--loss-color:#ff4d6a;}
         body { font-family:'Funnel Sans',sans-serif;background-color:var(--bg-color);color:var(--text-color);padding:15px;line-height:1.7;font-size:15px;margin:0; }
         .container { max-width:900px;margin:0 auto; }
+        .header { display:flex;justify-content:space-between;align-items:center;margin-bottom:20px; }
+        #reportBtn { background-color:#28a745;color:#fff;padding:8px 14px;border-radius:4px;font-weight:600;text-decoration:none; }
         h1, h2 { color:var(--primary-color);border-bottom:1px solid var(--border-color);padding-bottom:10px;font-size:1.5em; }
         h2 { font-size:1.1em;color:var(--label-color);margin-top:25px;margin-bottom:15px;border:none;padding:0;}
         .section { background-color:var(--surface-color);padding:20px;border-radius:8px;border:1px solid var(--border-color); margin-bottom:25px; }
@@ -45,7 +47,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Nihai Backtest Platformu</h1>
+        <div class="header">
+            <h1>Nihai Backtest Platformu</h1>
+            <a id="reportBtn" href="gelistirme_raporu.html" download>Geliştirme Raporu</a>
+        </div>
         <div class="section">
             <h2>Genel Ayarlar</h2>
             <div class="config-grid">
