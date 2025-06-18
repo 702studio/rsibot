@@ -1141,8 +1141,8 @@ window.applyRiskProfile = function() {
         allResults.forEach((result,idx) => {
             const { finalBalance, initialBalance, trades, totalFees, liquidationCount, params } = result;
             const grossPnl = finalBalance - initialBalance + totalFees;
-            if(netPnl > bestNet){ bestNet = netPnl; bestIdx = idx; }
             const netPnl = finalBalance - initialBalance;
+            if(netPnl > bestNet){ bestNet = netPnl; bestIdx = idx; }
             const pnlClass = netPnl >= 0 ? 'profit' : 'loss'; const pnlSign = netPnl >= 0 ? '+' : '';
             const strategyName = strategies[params.strategy].name;
             let periodText = "";
