@@ -29,8 +29,11 @@
         .period-chip { padding:6px 12px;border:1px solid #555;border-radius:12px;cursor:pointer;font-size:13px;background-color:#333;color:var(--text-color);user-select:none; }
         .period-chip.selected { background-color:var(--primary-color);color:#121212; }
         .strategy-grid { display:flex;flex-wrap:nowrap;overflow-x:auto;gap:10px;padding-bottom:10px; }
-        .strategy-card { flex:1 1 180px;background-color:#333;padding:12px;border:1px solid #555;border-radius:8px;cursor:pointer; }
+        .strategy-card { flex:0 0 auto;background-color:#333;padding:12px;border:1px solid #555;border-radius:8px;cursor:pointer;min-width:180px; }
         .strategy-card.selected { border-color:var(--primary-color);background-color:#444; }
+        .strategy-card p { margin:6px 0;font-size:12px;color:var(--label-color); }
+        .tags { display:flex;flex-wrap:wrap;gap:4px;margin-top:6px; }
+        .tag { background:#555;color:#fff;font-size:11px;padding:2px 6px;border-radius:4px; }
         .lang-btn { margin-left:5px;padding:6px 10px;border:none;background:#555;color:#fff;border-radius:4px;cursor:pointer; }
         .toggle { position:relative;display:inline-block;width:40px;height:20px; }
         .toggle input { opacity:0;width:0;height:0; }
@@ -55,6 +58,15 @@
         .report-dl { display:grid;grid-template-columns:max-content auto;gap:10px 20px; } .report-dl dt { grid-column-start:1;font-weight:700;color:var(--label-color); } .report-dl dd { grid-column-start:2; }
         .report-dl strong { font-size:1.2em; } .log-container { font-size:12px; max-height:300px; overflow-y:auto; } .log-container p { margin:4px 0; }
         .profit { color:var(--profit-color); } .loss { color:var(--loss-color); }
+        .strategy-param-group{display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;}
+        @media (max-width:600px){
+            body{font-size:13px;padding:10px;}
+            select,input,button{font-size:13px;padding:8px;}
+            .config-grid{grid-template-columns:1fr;gap:10px;}
+            .strategy-param-group{grid-template-columns:1fr;}
+            .action-buttons button{font-size:14px;padding:10px;}
+            h1{font-size:1.2em;}
+        }
     </style>
 </head>
 <body>
@@ -79,7 +91,27 @@
                     <label>Test Periyodu (seçmek için dokun veya tıkla, çift tık tek seçim)</label>
                     <div id="timeframe-chips" class="chip-container"></div>
                 </div>
-                <div id="strategy-settings" class="config-grid"></div>
+                <div id="strategy-settings" class="config-grid">
+                    <div id="params-rsi_plus_spot" class="strategy-param-group">
+                        <div class="config-item"><label for="rsiPeriod_plus">RSI Periyodu</label><input type="number" id="rsiPeriod_plus" name="rsiPeriod" value="14"></div>
+                        <div class="config-item"><label for="rsiBuyLevel_plus">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel_plus" name="rsiBuyLevel" value="30"></div>
+                        <div class="config-item"><label for="trendEmaPeriod_plus">Trend EMA Periyodu</label><input type="number" id="trendEmaPeriod_plus" name="trendEmaPeriod" value="200"></div>
+                    </div>
+                    <div id="params-rsi_reversal" class="strategy-param-group">
+                        <div class="config-item"><label for="rsiPeriod_rev">RSI Periyodu</label><input type="number" id="rsiPeriod_rev" name="rsiPeriod" value="14"></div>
+                        <div class="config-item"><label for="rsiBuyLevel_rev">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel_rev" name="rsiBuyLevel" value="30"></div>
+                    </div>
+                    <div id="params-ma_crossover" class="strategy-param-group">
+                        <div class="config-item"><label for="shortPeriod">Kısa MA</label><input type="number" id="shortPeriod" name="shortPeriod" value="20"></div>
+                        <div class="config-item"><label for="longPeriod">Uzun MA</label><input type="number" id="longPeriod" name="longPeriod" value="50"></div>
+                    </div>
+                    <div id="params-bollinger_bands" class="strategy-param-group">
+                        <div class="config-item"><label for="bbPeriod">BB Periyodu</label><input type="number" id="bbPeriod" name="bbPeriod" value="20"></div>
+                        <div class="config-item"><label for="bbStd">Std Sapma</label><input type="number" step="0.1" id="bbStd" name="bbStd" value="2"></div>
+                    </div>
+                    <div id="params-rsi_smart_leverage" class="strategy-param-group"></div>
+                    <div id="params-rsi_leveraged" class="strategy-param-group"></div>
+                </div>
             </div>
         </div>
         <div class="section">
@@ -108,7 +140,7 @@
         </div>
         <div class="action-buttons"><button id="runBtn" onclick="runBacktest()" data-i18n="run_backtest">Backtest'i Başlat</button><button id="downloadBtn" onclick="generateAndDownloadHtmlReport()" style="display:none;" data-i18n="download_report">Raporu İndir</button></div>
         <div id="progress-container"></div>
-        <div id="results"><div id="equityChart" class="chart-container"></div><div id="priceChart" class="chart-container"></div></div>
+        <div id="results"></div>
     </div>
 
 <script>
@@ -185,7 +217,10 @@
             const card = document.createElement("div");
             card.className = "strategy-card";
             card.dataset.strategy = opt.value;
-            card.textContent = opt.textContent;
+            const strat = strategies[opt.value];
+            card.innerHTML = `<strong>${strat.name}</strong>`;
+            if(strat.description) card.innerHTML += `<p>${strat.description}</p>`;
+            if(strat.tags){ card.innerHTML += `<div class="tags">${strat.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>`; }
             card.addEventListener("click", () => {
                 document.querySelectorAll(".strategy-card").forEach(c => c.classList.remove("selected"));
                 card.classList.add("selected");
@@ -204,16 +239,10 @@
         document.getElementById("leverage-settings").style.display = isSpot ? "none" : (strategy === "rsi_leveraged" ? "grid" : "none");
         document.getElementById("smart-leverage-settings").style.display = strategy === "rsi_smart_leverage" ? "grid" : "none";
         document.getElementById("fundingRate").parentElement.style.display = isSpot ? "none" : "block";
-        const container = document.getElementById("strategy-settings");
-        container.innerHTML = "";
-        if(strategy === "rsi_plus_spot"){
-            container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_plus_spot.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_plus_spot.rsiBuyLevel}"></div><div class="config-item"><label for="trendEmaPeriod">Trend EMA Periyodu</label><input type="number" id="trendEmaPeriod" value="${defaultSettings.rsi_plus_spot.emaPeriod}"></div>`;
-        } else if(strategy === "rsi_reversal"){
-            container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_reversal.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_reversal.rsiBuyLevel}"></div>`;
-        } else if(strategy === "ma_crossover"){
-            container.innerHTML = `<div class="config-item"><label for="shortPeriod">Kısa MA</label><input type="number" id="shortPeriod" value="${defaultSettings.ma_crossover.shortPeriod}"></div><div class="config-item"><label for="longPeriod">Uzun MA</label><input type="number" id="longPeriod" value="${defaultSettings.ma_crossover.longPeriod}"></div>`;
-        } else if(strategy === "bollinger_bands") {
-            container.innerHTML = `<div class="config-item"><label for="bbPeriod">BB Periyodu</label><input type="number" id="bbPeriod" value="${defaultSettings.bollinger_bands.period}"></div><div class="config-item"><label for="bbStd">Std Sapma</label><input type="number" step="0.1" id="bbStd" value="${defaultSettings.bollinger_bands.stdDev}"></div>`;
+        document.querySelectorAll('.strategy-param-group').forEach(div=>div.style.display='none');
+        const grp=document.getElementById(`params-${strategy}`);
+        if(grp){
+            grp.style.display='grid';
         }
         if (defaultSettings[strategy]) {
             const d = defaultSettings[strategy];
@@ -222,6 +251,13 @@
             if (d.hourlyFundingRate !== undefined) document.getElementById('fundingRate').value = d.hourlyFundingRate;
             if (d.marginType !== undefined) document.getElementById('marginType').value = d.marginType;
             if (d.positionSize !== undefined) document.getElementById('positionSize').value = d.positionSize;
+            if (d.rsiPeriod !== undefined){ const el=grp.querySelector('[name=rsiPeriod]'); if(el) el.value=d.rsiPeriod; }
+            if (d.rsiBuyLevel !== undefined){ const el=grp.querySelector('[name=rsiBuyLevel]'); if(el) el.value=d.rsiBuyLevel; }
+            if (d.emaPeriod !== undefined){ const el=grp.querySelector('[name=trendEmaPeriod]'); if(el) el.value=d.emaPeriod; }
+            if (d.shortPeriod !== undefined){ const el=grp.querySelector('[name=shortPeriod]'); if(el) el.value=d.shortPeriod; }
+            if (d.longPeriod !== undefined){ const el=grp.querySelector('[name=longPeriod]'); if(el) el.value=d.longPeriod; }
+            if (d.period !== undefined){ const el=grp.querySelector('[name=bbPeriod]'); if(el) el.value=d.period; }
+            if (d.stdDev !== undefined){ const el=grp.querySelector('[name=bbStd]'); if(el) el.value=d.stdDev; }
         }
     };
 window.applyRiskProfile = function() {
@@ -343,6 +379,8 @@ window.applyRiskProfile = function() {
         rsi_plus_spot: {
             name: "RSI+ (Trend Filtreli)",
             type: 'spot',
+            description: "RSI ve EMA filtresiyle dip alım stratejisi",
+            tags: ['Spot','Trend'],
             run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
                 const prices = klines.map(k => parseFloat(k[4]));
                 const rsiPeriod = params.rsiPeriod || 14;
@@ -420,6 +458,8 @@ window.applyRiskProfile = function() {
         rsi_reversal: {
             name: "RSI Geri Dönüşü (Spot)",
             type: 'spot',
+            description: "Kısa vadeli RSI sinyalleriyle spot al-sat",
+            tags: ['Spot'],
             run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
                 const prices = klines.map(k => parseFloat(k[4]));
                 const rsiPeriod = params.rsiPeriod || 14;
@@ -495,6 +535,8 @@ window.applyRiskProfile = function() {
         ma_crossover: {
             name: "MA Kesişimi (Spot Trend)",
             type: 'spot',
+            description: "Kısa ve uzun hareketli ortalama kesişimine dayalı trend stratejisi",
+            tags: ['Spot','Trend'],
             run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
                 const prices = klines.map(k => parseFloat(k[4]));
                 const shortPeriod = params.shortPeriod || 20;
@@ -571,6 +613,8 @@ window.applyRiskProfile = function() {
         bollinger_bands: {
             name: "Bollinger Bandı (Volatilite)",
             type: 'spot',
+            description: "Bollinger üst-alt bandlarına göre al-sat",
+            tags: ['Spot','Volatilite'],
             run: function(klines, initialBalance, commissionRate, compound = true, params = {}) {
                 const prices = klines.map(k => parseFloat(k[4]));
                 const period = params.bbPeriod || 20;
@@ -655,6 +699,8 @@ window.applyRiskProfile = function() {
         rsi_smart_leverage: {
             name: "Akıllı Kaldıraç RSI",
             type: 'leveraged',
+            description: "Dinamik pozisyon boyutuyla RSI tabanlı kaldıraç",
+            tags: ['Leveraged'],
             run: function(klines, initialBalance, settings) {
                 const { positionSize, commissionRate, hourlyFundingRate, marginType, compound, stopLossPercent, takeProfitPercent, direction } = settings;
                 const prices = klines.map(k => parseFloat(k[4]));
@@ -776,6 +822,8 @@ window.applyRiskProfile = function() {
         rsi_leveraged: {
             name: "RSI Kaldıraçlı (Standart)",
             type: 'leveraged',
+            description: "Sabit kaldıraçla RSI tabanlı işlem",
+            tags: ['Leveraged'],
             run: function(klines, initialBalance, settings) {
                 const { leverage, marginPercent, commissionRate, hourlyFundingRate, marginType, compound, stopLossPercent, takeProfitPercent, direction } = settings;
                 const prices = klines.map(k => parseFloat(k[4]));
@@ -923,16 +971,18 @@ window.applyRiskProfile = function() {
                     };
                     result = selectedStrategy.run(klines, initialBalance, settings);
                 } else {
+                    const grp = document.getElementById(`params-${strategyKey}`);
+                    const readNum = name => { const el = grp ? grp.querySelector(`[name=${name}]`) : null; return el ? parseFloat(el.value) : undefined; };
                     const params = {
                         stopLossPercent: sl,
                         takeProfitPercent: tp,
-                        rsiPeriod: document.getElementById('rsiPeriod') ? parseInt(document.getElementById('rsiPeriod').value) : undefined,
-                        rsiBuyLevel: document.getElementById('rsiBuyLevel') ? parseFloat(document.getElementById('rsiBuyLevel').value) : undefined,
-                        emaPeriod: document.getElementById('trendEmaPeriod') ? parseInt(document.getElementById('trendEmaPeriod').value) : undefined,
-                        shortPeriod: document.getElementById('shortPeriod') ? parseInt(document.getElementById('shortPeriod').value) : undefined,
-                        longPeriod: document.getElementById('longPeriod') ? parseInt(document.getElementById('longPeriod').value) : undefined,
-                        bbPeriod: document.getElementById('bbPeriod') ? parseInt(document.getElementById('bbPeriod').value) : undefined,
-                        bbStd: document.getElementById('bbStd') ? parseFloat(document.getElementById('bbStd').value) : undefined
+                        rsiPeriod: readNum('rsiPeriod'),
+                        rsiBuyLevel: readNum('rsiBuyLevel'),
+                        emaPeriod: readNum('trendEmaPeriod'),
+                        shortPeriod: readNum('shortPeriod'),
+                        longPeriod: readNum('longPeriod'),
+                        bbPeriod: readNum('bbPeriod'),
+                        bbStd: readNum('bbStd')
                     };
                     result = selectedStrategy.run(klines, initialBalance, commissionRate, compound, params);
                 }
@@ -950,10 +1000,9 @@ window.applyRiskProfile = function() {
                     positionSize: selectedStrategy.name.includes('Akıllı') ? document.getElementById('positionSize').value : null,
                     stopLossPercent: sl,
                     takeProfitPercent: tp,
-                    bbPeriod: document.getElementById('bbPeriod') ? document.getElementById('bbPeriod').value : null,
-                    bbStd: document.getElementById('bbStd') ? document.getElementById('bbStd').value : null,
-                    direction: direction,
-                    strategy: strategyKey
+                    bbPeriod: readNum('bbPeriod'),
+                    bbStd: readNum('bbStd'),
+                    direction: direction
                 };
                 allResults.push({ ...result, initialBalance, params, klines, equity });
             }
@@ -971,7 +1020,8 @@ window.applyRiskProfile = function() {
     function generateAndDisplayReport() {
         const resultsDiv = document.getElementById('results');
         allResultsHtml = "";
-        allResults.forEach(result => {
+        const chartJobs = [];
+        allResults.forEach((result,idx) => {
             const { finalBalance, initialBalance, trades, totalFees, liquidationCount, params } = result;
             const grossPnl = finalBalance - initialBalance + totalFees;
             const netPnl = finalBalance - initialBalance;
@@ -989,7 +1039,9 @@ window.applyRiskProfile = function() {
             const winRate = tradeCount > 0 ? (winCount / tradeCount * 100).toFixed(2) : 0;
             const profitFactor = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : (totalProfit > 0 ? '∞' : '0');
             
-            let htmlReport = `<div class="report-section"><h3>Test Sonuçları: ${strategyName} - ${periodText}</h3><dl class="report-dl">`;
+            const eqId = `equityChart-${idx}`;
+            const prId = `priceChart-${idx}`;
+            let htmlReport = `<div class="report-section"><h3>Test Sonuçları: ${strategyName} - ${periodText}</h3><div id="${eqId}" class="chart-container"></div><div id="${prId}" class="chart-container"></div><dl class="report-dl">`;
             htmlReport += `<dt>Parite</dt><dd>${params.pair} (${params.interval})</dd>`;
             if (params.leverage) { htmlReport += `<dt>Kaldıraç</dt><dd>${params.leverage}x (${params.marginType}) - %${params.marginPercent} Margin</dd>`;}
             if (params.positionSize) { htmlReport += `<dt>İşlem Büyüklüğü</dt><dd>${params.positionSize} USD (Otomatik Kaldıraç)</dd>`;}
@@ -1008,17 +1060,17 @@ window.applyRiskProfile = function() {
             });
             htmlReport += `</div></div>`;
             allResultsHtml += htmlReport;
+            chartJobs.push({eqId,prId,equity:result.equity,klines:result.klines,trades});
         });
-        
-        if(allResults.length>0){ renderCharts(allResults[0].equity, allResults[0].klines, allResults[0].trades); }
         resultsDiv.innerHTML = allResultsHtml;
+        chartJobs.forEach(job=>renderCharts(job.equity, job.klines, job.trades, job.eqId, job.prId));
         resultsDiv.style.display = 'block';
         document.getElementById('progress-container').style.display = 'none';
         if(allResults.length > 0 && allResults.some(r => r.trades.length > 0)) document.getElementById('downloadBtn').style.display = 'flex';
     };
-    function renderCharts(equity, klines, trades){
-        const eqDiv=document.getElementById("equityChart");
-        const prDiv=document.getElementById("priceChart");
+    function renderCharts(equity, klines, trades, eqId, prId){
+        const eqDiv=document.getElementById(eqId);
+        const prDiv=document.getElementById(prId);
         eqDiv.innerHTML=""; prDiv.innerHTML="";
         const ec=LightweightCharts.createChart(eqDiv,{height:300,layout:{background:{color:"#1b1d1f"},textColor:"#e0e0e0"},grid:{vertLines:{color:"#333"},horzLines:{color:"#333"}}});
         ec.addLineSeries({color:"#ffcc33"}).setData(equity);
@@ -1039,7 +1091,7 @@ window.applyRiskProfile = function() {
     };
 
     window.onload = function(){
-        const lang = localStorage.getItem('lang') || 'tr';
+        const lang = localStorage.getItem('lang') || 'en';
         setLanguage(lang);
         initPeriodChips();
         initStrategyCards();
