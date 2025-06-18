@@ -8,7 +8,87 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Local fallback for lightweight-charts since CDN access may be blocked -->
+    <script>
+    // Minimal stub implementing the parts of Lightweight Charts used in this project
+    (function(){
+        if(window.LightweightCharts) return;
+        window.LightweightCharts = {
+            createChart(container, opts={}) {
+                const canvas = document.createElement('canvas');
+                canvas.width = container.clientWidth || 300;
+                canvas.height = opts.height || 300;
+                container.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
+                const series = [];
+                function redraw(){
+                    ctx.clearRect(0,0,canvas.width,canvas.height);
+                    series.forEach(s=>s.draw(ctx, canvas.width, canvas.height));
+                }
+                const chart = {
+                    addLineSeries(sOpts={}){
+                        const data=[];
+                        const color=sOpts.color||'#0f0';
+                        const s={
+                            setData(d){ data.splice(0,data.length,...d); redraw(); },
+                            draw(ctx,w,h){
+                                if(data.length<2) return;
+                                const xs=data.map(p=>p.time);
+                                const ys=data.map(p=>p.value);
+                                const minX=Math.min(...xs), maxX=Math.max(...xs);
+                                const minY=Math.min(...ys), maxY=Math.max(...ys);
+                                ctx.beginPath();
+                                data.forEach((p,i)=>{
+                                    const x=(p.time-minX)/(maxX-minX)*w;
+                                    const y=h-(p.value-minY)/(maxY-minY)*h;
+                                    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+                                });
+                                ctx.strokeStyle=color; ctx.stroke();
+                            }
+                        }; series.push(s); return s;
+                    },
+                    addCandlestickSeries(){
+                        const data=[]; const markers=[];
+                        const s={
+                            setData(d){ data.splice(0,data.length,...d); redraw(); },
+                            setMarkers(m){ markers.splice(0,markers.length,...m); redraw(); },
+                            draw(ctx,w,h){
+                                if(data.length===0) return;
+                                const xs=data.map(c=>c.time);
+                                const highs=data.map(c=>c.high);
+                                const lows=data.map(c=>c.low);
+                                const maxX=Math.max(...xs), minX=Math.min(...xs);
+                                const maxY=Math.max(...highs), minY=Math.min(...lows);
+                                const candleWidth=Math.max(w/(data.length*1.5),1);
+                                data.forEach(c=>{
+                                    const x=(c.time-minX)/(maxX-minX)*w;
+                                    const openY=h-(c.open-minY)/(maxY-minY)*h;
+                                    const closeY=h-(c.close-minY)/(maxY-minY)*h;
+                                    const highY=h-(c.high-minY)/(maxY-minY)*h;
+                                    const lowY=h-(c.low-minY)/(maxY-minY)*h;
+                                    ctx.strokeStyle=c.close>=c.open?'#0f0':'#f00';
+                                    ctx.beginPath();
+                                    ctx.moveTo(x,highY); ctx.lineTo(x,lowY); ctx.stroke();
+                                    ctx.fillStyle=ctx.strokeStyle;
+                                    ctx.fillRect(x-candleWidth/2, Math.min(openY,closeY), candleWidth, Math.abs(closeY-openY)||1);
+                                });
+                                markers.forEach(m=>{
+                                    const x=(m.time-minX)/(maxX-minX)*w;
+                                    const y=m.position==='below'?h:0;
+                                    ctx.fillStyle=m.color||'#ff0';
+                                    ctx.beginPath();
+                                    ctx.moveTo(x,y);
+                                    ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+                                });
+                            }
+                        }; series.push(s); return s;
+                    }
+                };
+                return chart;
+            }
+        };
+    })();
+    </script>
     <style>
         :root {--bg-color:#101214;--surface-color:#1b1d1f;--primary-color:#ffcc33;--primary-hover:#e0a021;--text-color:#e0e0e0;--label-color:#bbb;--border-color:#333;--profit-color:#00ff9d;--loss-color:#ff4d6a;}
         body { font-family:'Funnel Sans',sans-serif;background-color:var(--bg-color);color:var(--text-color);padding:15px;line-height:1.7;font-size:15px;margin:0; }
