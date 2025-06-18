@@ -105,7 +105,7 @@
         <div id="results"><div id="equityChart" class="chart-container"></div><div id="priceChart" class="chart-container"></div></div>
     </div>
 
-
+<script>
 (function() {
     let allResultsHtml = "";
     let allResults = [];
@@ -164,8 +164,6 @@
         container.querySelector(".strategy-card").classList.add("selected");
     }
 
-    }
-
     window.toggleSettings = function() {
         const strategy = document.getElementById('strategy').value;
         const stratObj = strategies[strategy];
@@ -173,6 +171,7 @@
         document.getElementById("leverage-settings").style.display = isSpot ? "none" : (strategy === "rsi_leveraged" ? "grid" : "none");
         document.getElementById("smart-leverage-settings").style.display = strategy === "rsi_smart_leverage" ? "grid" : "none";
         document.getElementById("fundingRate").parentElement.style.display = isSpot ? "none" : "block";
+        const container = document.getElementById("strategy-settings");
         container.innerHTML = "";
         if(strategy === "rsi_plus_spot"){
             container.innerHTML = `<div class="config-item"><label for="rsiPeriod">RSI Periyodu</label><input type="number" id="rsiPeriod" value="${defaultSettings.rsi_plus_spot.rsiPeriod}"></div><div class="config-item"><label for="rsiBuyLevel">RSI Alım Seviyesi</label><input type="number" id="rsiBuyLevel" value="${defaultSettings.rsi_plus_spot.rsiBuyLevel}"></div><div class="config-item"><label for="trendEmaPeriod">Trend EMA Periyodu</label><input type="number" id="trendEmaPeriod" value="${defaultSettings.rsi_plus_spot.emaPeriod}"></div>`;
@@ -302,8 +301,6 @@ window.applyRiskProfile = function() {
         });
         return curve;
     }
-
-    };
 
     const strategies = {
         rsi_plus_spot: {
@@ -918,9 +915,10 @@ window.applyRiskProfile = function() {
                     takeProfitPercent: tp,
                     bbPeriod: document.getElementById('bbPeriod') ? document.getElementById('bbPeriod').value : null,
                     bbStd: document.getElementById('bbStd') ? document.getElementById('bbStd').value : null,
-                    direction
+                    direction: direction,
+                    strategy: strategyKey
+                };
                 allResults.push({ ...result, initialBalance, params, klines, equity });
-                allResults.push({ ...result, initialBalance, params });
             }
             updateProgress(100, "Rapor oluşturuluyor...");
             generateAndDisplayReport();
